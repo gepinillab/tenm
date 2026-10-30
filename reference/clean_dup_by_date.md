@@ -13,7 +13,9 @@ clean_dup_by_date(
   threshold,
   by_mask = FALSE,
   raster_mask = NULL,
-  n_ngbs = 0
+  n_ngbs = 0,
+  process_ngbs_by = 100,
+  progress = TRUE
 )
 ```
 
@@ -56,7 +58,18 @@ clean_dup_by_date(
   - n considers duplicates all occurrences within a distance of n
     pixels.
 
+- process_ngbs_by:
+
+  Numeric parameter to improve memory management. It process neighbor
+  cells by a quantity specified by the user.
+
+- progress:
+
+  Logical. If `TRUE`, show computation progress.
+
 ## Value
+
+Returns a data.frame with cleaned occurrence records, excluding
 
 An object of class sp.temporal.modeling containing a temporal data.frame
 with cleaned occurrence data, including columns for longitude, latitude,

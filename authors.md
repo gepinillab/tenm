@@ -5,7 +5,7 @@
 - **Luis Osorio-Olvera**. Author, maintainer.
   [](https://orcid.org/0000-0003-0701-5398)
 
-- **Miguel Hernández**. Author.
+- **Miguel A. Hernández-Gutiérrez**. Author.
   [](https://orcid.org/0000-0002-6086-3460)
 
 - **Rusby G. Contreras-Díaz**. Author.
@@ -34,15 +34,15 @@
 Source:
 [`DESCRIPTION`](https://github.com/luismurao/tenm/blob/main/DESCRIPTION)
 
-Osorio-Olvera L, Hernández M, Contreras-Díaz R, Chiappa-Carrara X,
-Rosales-Ramos F, Munguía-Carrara M, López-Corona O (2025). *tenm:
-Temporal Ecological Niche Models*. R package version 0.5.1,
-<https://luismurao.github.io/tenm/>.
+Osorio-Olvera L, Hernández-Gutiérrez M, Contreras-Díaz R,
+Chiappa-Carrara X, Rosales-Ramos F, Munguía-Carrara M, López-Corona O
+(2026). *tenm: Temporal Ecological Niche Models*. R package version
+0.5.1, <https://luismurao.github.io/tenm/>.
 
     @Manual{,
       title = {tenm: Temporal Ecological Niche Models},
-      author = {Luis Osorio-Olvera and Miguel Hernández and Rusby G. Contreras-Díaz and Xavier Chiappa-Carrara and Fernanda Rosales-Ramos and Mariana Munguía-Carrara and Oliver López-Corona},
-      year = {2025},
+      author = {Luis Osorio-Olvera and Miguel A. Hernández-Gutiérrez and Rusby G. Contreras-Díaz and Xavier Chiappa-Carrara and Fernanda Rosales-Ramos and Mariana Munguía-Carrara and Oliver López-Corona},
+      year = {2026},
       note = {R package version 0.5.1},
       url = {https://luismurao.github.io/tenm/},
     }

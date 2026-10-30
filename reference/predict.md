@@ -149,8 +149,8 @@ mod_sel <- tenm::tenm_selection(this_species = abbg,
 #> 
 #> -------------------------------------------------------------------
 #>   124 models passed omr_criteria for train data
-#>   19 models passed omr_criteria for test data
-#>   19 models passed omr_criteria for train and test data
+#>   20 models passed omr_criteria for test data
+#>   20 models passed omr_criteria for train and test data
 # Prediction using variables path
 layers_70_00_dir <- system.file("extdata/bio_1970_2000",package = "tenm")
 # The if the 'model_variables' parameter is set to NULL, the method uses
@@ -160,14 +160,22 @@ suit_1970_2000 <- predict(mod_sel,
                           layers_path = layers_70_00_dir,
                           layers_ext = ".tif$")
 #> No selected variables. Using the first model in mods_table
-#>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
+#> 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%
 # You can select the modeling variables used to project the model
 suit_1970_2000 <- predict(mod_sel,
                           model_variables = c("bio_01","bio_04",
                                               "bio_07","bio_12"),
                           layers_path = layers_70_00_dir,
                           layers_ext = ".tif$")
-#>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
+#> 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%
 
 # Pass a list containing the paths of the modeling layers
 layers_1939_2016 <- file.path(tempora_layers_dir,c("1939","2016"))
@@ -175,7 +183,13 @@ suit_1939_2016 <- predict(mod_sel,model_variables = NULL,
                           layers_path = layers_1939_2016,
                           layers_ext = ".tif$")
 #> No selected variables. Using the first model in mods_table
-#>   |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%
+#> 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |===================================                                   |  50%
+  |                                                                            
+  |======================================================================| 100%
 # Pass a list of raster layers
 layers_1939 <- terra::rast(list.files(layers_1939_2016[1],
                                       pattern = ".tif$",full.names = TRUE))
@@ -189,7 +203,13 @@ suit_1939_2016 <- predict(object = mod_sel,
                           layers_path = NULL,
                           layers = layers_list,
                           layers_ext = ".tif$")
-#>   |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%
+#> 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |===================================                                   |  50%
+  |                                                                            
+  |======================================================================| 100%
 
 # }
 ```

@@ -170,7 +170,11 @@ suit_1970_2000 <- predict(mod_sel,model_variables = NULL,
                           layers_path = layers_70_00_dir,
                           layers_ext = ".tif$")
 #> No selected variables. Using the first model in mods_table
-#>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
+#> 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%
 terra::plot(suit_1970_2000)
 colors <- c('#000004FF', '#040312FF', '#0B0725FF',
             '#0B0725FF', '#160B38FF', '#160B38FF',

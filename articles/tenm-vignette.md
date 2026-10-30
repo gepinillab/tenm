@@ -13,6 +13,7 @@ lizard from the Mexican Sierra Madre Oriental.
 First, we load the `tenm` R package.
 
 ``` r
+
 library(tenm)
 ## basic example code
 ```
@@ -23,6 +24,7 @@ distribution. This dataset has also information about the year of
 observation and the [GBIF](https://www.gbif.org) doi.
 
 ``` r
+
 data("abronia")
 head(abronia)
 #>            species decimalLongitude decimalLatitude year
@@ -66,6 +68,7 @@ we will use the [`tenm::clean_dup`](../reference/clean_dup.md) function
 of the `tenm` R package.
 
 ``` r
+
 # Load a modeling layer 
 tempora_layers_dir <- system.file("extdata/bio",package = "tenm")
 tenm_mask <- terra::rast(file.path(tempora_layers_dir,"1939/bio_01.tif"))
@@ -100,6 +103,7 @@ losing records that might occur in different pixels but fall within the
 distance used as threshold for cleaning.
 
 ``` r
+
 ab_by_mask <- tenm::clean_dup(data =abronia,
                               longitude = "decimalLongitude",
                               latitude = "decimalLatitude",
@@ -140,6 +144,7 @@ Let’s apply the functions and methods to work with time-specific niche
 models. First, we load our data.
 
 ``` r
+
 library(tenm)
 data("abronia")
 ```
@@ -148,6 +153,7 @@ Now, we indicate the path where our time-specific modeling layers are
 located.
 
 ``` r
+
 tempora_layers_dir <- system.file("extdata/bio",package = "tenm")
 print(tempora_layers_dir)
 #> [1] "/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/tenm/extdata/bio"
@@ -157,6 +163,7 @@ We explore the structure of the directory that contains our modeling
 layers.
 
 ``` r
+
 list.dirs(tempora_layers_dir,recursive = FALSE)
 #>  [1] "/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/tenm/extdata/bio/1939"
 #>  [2] "/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/tenm/extdata/bio/1940"
@@ -197,6 +204,7 @@ dates of the modeling layers**. Now, we explore some of these dated
 directories.
 
 ``` r
+
 # Directory for year 1939
 list.files(list.dirs(tempora_layers_dir,
                      recursive = FALSE)[1],
@@ -234,6 +242,7 @@ In the following lines of code, we will use a special function of the
 `tenm` R package that will allow us to work with time-specific data.
 
 ``` r
+
 data("abronia")
 tempora_layers_dir <- system.file("extdata/bio",package = "tenm")
 abt <- tenm::sp_temporal_data(occs = abronia,
@@ -262,6 +271,7 @@ deals with time-specific information.
 In the following line of code, we explore the slots of `abt` object.
 
 ``` r
+
 # See the names of the slots
 names(abt)
 #> [1] "temporal_df"  "sp_date_var"  "lon_lat_vars" "layers_ext"
@@ -278,6 +288,7 @@ columns: longitude, latitude, the time variable (here year), the layer
 dates, and layers path (the path the temporal niche layers are located).
 
 ``` r
+
 # See the temporal data.frame
 tidyr::as_tibble(head(abt$temporal_df))
 #> # A tibble: 6 × 5
@@ -302,11 +313,12 @@ occurrences might be spatially duplicated but belong to other dates, so
 in a time-specific context, they are not duplicates).
 
 ``` r
+
 # Clean duplicates using a raster mask
 abtc <- tenm::clean_dup_by_date(this_species = abt,
                                 by_mask = TRUE,
                                 threshold = terra::res(tenm_mask)[1],
-                                raster_mask = tenm_mask[1],
+                                raster_mask = tenm_mask,
                                 n_ngbs = 0)
 # Check number of records
 head(tidyr::as_tibble(abtc$temporal_df))
@@ -331,6 +343,7 @@ the standard data cleaning process and the time-specific thinning
 process.
 
 ``` r
+
 
 colors1 <- hcl.colors(length(unique(ab_1$year)))
 par(mar=c(4,4,2,2),mfrow=c(1,2))
@@ -383,6 +396,7 @@ the proportion of occurrences to be used as the training dataset. The
 and test datasets.
 
 ``` r
+
 future::plan("multisession",workers=2)
 abex <- tenm::ex_by_date(this_species = abtc,
                          train_prop=0.7)
@@ -392,6 +406,7 @@ future::plan("sequential")
 Now, we explore the slot “temporal_df”.
 
 ``` r
+
 head(abex$temporal_df)
 #> # A tibble: 6 × 26
 #>   decimalLongitude decimalLatitude  year layer_dates layers_path   cell_ids_year
@@ -423,6 +438,7 @@ calibration area and a neighborhood of 10 pixels around each occurrence
 point (buffer_ngbs parameter).
 
 ``` r
+
 future::plan("multisession",workers=2)
 abbg <- tenm::bg_by_date(this_species = abex,
                          buffer_ngbs=10,n_bg=10000)
@@ -469,6 +485,7 @@ format table that allows users to fit other algorithms such as MaxEnt.
 Let’s see how it works.
 
 ``` r
+
 # SWD table for occurrence records
 occ_swd <- tdf2swd(this_species=abex,sp_name="abro_gram")
 # SWD table for background data
@@ -513,6 +530,7 @@ function filters variables according to a correlation threshold, which
 is important to avoid issues related to collinearity.
 
 ``` r
+
 varcorrs <- tenm::correlation_finder(environmental_data =
                                        abex$env_data[,-ncol(abex$env_data)],
                                      method = "spearman",
@@ -544,6 +562,7 @@ to specify whether to run the calibration process in parallel and the
 number of cores used in the parallel process (*parallel* parameter).
 
 ``` r
+
 mod_sel <- tenm::tenm_selection(this_species = abbg,
                                 omr_criteria =0.1,
                                 ellipsoid_level=0.975,
@@ -606,6 +625,7 @@ We fitted 492 models, from which 27 passed our selection criteria. Let’s
 explore the `mod_sel` object.
 
 ``` r
+
 names(mod_sel)
 #> [1] "temporal_df"  "sp_date_var"  "lon_lat_vars" "layers_ext"   "env_bg"      
 #> [6] "mods_table"
@@ -615,6 +635,7 @@ It has five slots. We can obtain the table of results of the selection
 process by calling the `mods_table` slot.
 
 ``` r
+
 head(mod_sel$mods_table,27)
 #>                    fitted_vars nvars om_rate_train non_pred_train_ids
 #> 1  bio_01,bio_02,bio_04,bio_07     4       0.06250              18,31
@@ -738,6 +759,7 @@ project one of the selected models using the environmental layers of
 1970-2000.
 
 ``` r
+
 env_layers_2016 <- list.dirs(tempora_layers_dir,
                      recursive = FALSE)[32]
 suit_2016 <- predict(mod_sel,
@@ -756,6 +778,7 @@ Fig. 3. A selected niche model projected using environmental layers from
 Now for the period that comprehends 1970-2000.
 
 ``` r
+
 layers_70_00_dir <- system.file("extdata/bio_1970_2000",package = "tenm")
 suit_1970_2000 <- predict(mod_sel,
                           model_variables = c("bio_01","bio_03","bio_12"),
@@ -773,6 +796,7 @@ Fig. 4. A selected niche model projected using environmental layers from
 Lets see the predictions in geographic space
 
 ``` r
+
 par(mfrow=c(1,2), mar=c(4,4,2,2))
 terra::plot(suit_2016, main="Prediction for 2016")
 terra::plot(suit_1970_2000, main="Prediction for 1970-2000")
@@ -793,6 +817,7 @@ The following lines of code show the differences of a time-specific
 niche model and a standard niche model.
 
 ``` r
+
 layers_70_00_dir <- system.file("extdata/bio_1970_2000",package = "tenm")
 layers_70_00_path <- list.files(layers_70_00_dir,
                                 pattern = ".tif$",full.names = TRUE)

@@ -15,7 +15,9 @@ clean_dup(
   threshold = 0,
   by_mask = FALSE,
   raster_mask = NULL,
-  n_ngbs = 0
+  n_ngbs = 0,
+  process_ngbs_by = 100,
+  progress = TRUE
 )
 ```
 
@@ -65,6 +67,15 @@ clean_dup(
 
   - n considers duplicates all occurrences within a distance of n
     pixels.
+
+- process_ngbs_by:
+
+  Numeric parameter to improve memory management. It process neighbor
+  cells by a quantity specified by the user.
+
+- progress:
+
+  Logical. If `TRUE`, show computation progress.
 
 ## Value
 

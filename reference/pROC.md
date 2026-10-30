@@ -98,15 +98,15 @@ data(abronia)
 suit_1970_2000 <- terra::rast(system.file("extdata/suit_1970_2000.tif",
                                           package = "tenm"))
 print(suit_1970_2000)
-#> class       : SpatRaster 
+#> class       : SpatRaster
 #> size        : 23, 20, 1  (nrow, ncol, nlyr)
 #> resolution  : 0.1666667, 0.1666667  (x, y)
 #> extent      : -99.16667, -95.83333, 17.16667, 21  (xmin, xmax, ymin, ymax)
-#> coord. ref. : lon/lat WGS 84 (EPSG:4326) 
-#> source      : suit_1970_2000.tif 
-#> name        : suit_1970_2000 
-#> min value   :   4.614139e-37 
-#> max value   :   8.332142e-01 
+#> coord. ref. : lon/lat WGS 84 (EPSG:4326)
+#> source      : suit_1970_2000.tif
+#> name        : suit_1970_2000
+#> min value   :              0
+#> max value   :       0.833214
 proc_test <- tenm::pROC(continuous_mod = suit_1970_2000,
                         test_data = abronia[,c("decimalLongitude",
                                                "decimalLatitude")],
