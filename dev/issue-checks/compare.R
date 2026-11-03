@@ -105,7 +105,10 @@ for (s in scripts) {
     sha <- if (label == "base") base_sha else pr_sha
     cat("\n==== ", basename(s), " on ", label, ": ", ref, " (", substr(sha, 1, 7), ") ====\n", sep = "")
     r <- run_check(s, libs[[label]])
-    keep <- grepl("^(Issue #|tenm |EXPECTED:|GOT:|NOTE:|RESULT:)", r$out)
+    # Header lines, then everything from EXPECTED: on (GOT: may span lines)
+    from <- grep("^EXPECTED:", r$out)
+    keep <- grepl("^(Issue #|tenm )", r$out) |
+      seq_along(r$out) >= (if (length(from)) from[1] else Inf)
     cat(if (r$result == "ERROR") utils::tail(r$out, 20) else r$out[keep], sep = "\n")
     results[label] <- r$result
   }
