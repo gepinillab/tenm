@@ -43,6 +43,10 @@
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
+#'
+#'   If the ellipsoid cannot be fitted (for example, the covariance matrix is
+#'   singular), a one-row data.frame with "fitted_vars", "nvars",
+#'   "status" (\code{"fit_failed"}) and "fit_error" (the error message).
 
 #' @examples
 #' \donttest{
@@ -85,8 +89,13 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
              silent = TRUE)
 
   message1 <- attr(emd,"class")== "try-error"
-  if(length(message1)>0L)
-    return()
+  if(length(message1)>0L){
+    # Report the failed fit instead of returning NULL
+    return(data.frame(fitted_vars = paste(colnames(env_data), collapse = ","),
+                      nvars = ncol(env_data),
+                      status = "fit_failed",
+                      fit_error = trimws(conditionMessage(attr(emd, "condition")))))
+  }
 
   in_e <-  inEllipsoid(centroid = emd$centroid,
                        eShape = emd$covariance,

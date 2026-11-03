@@ -75,6 +75,10 @@ A data.frame with the following columns:
 \item "env_bg_paucratio": Environmental partial AUC ratio value.
 \item "env_bg_auc": Environmental AUC value.
 }
+
+If the ellipsoid cannot be fitted (for example, the covariance matrix is
+singular), a one-row data.frame with "fitted_vars", "nvars",
+"status" (\code{"fit_failed"}) and "fit_error" (the error message).
 }
 \description{
 Computes omission rate and statistical metrics for ellipsoid models using

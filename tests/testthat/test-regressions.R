@@ -415,3 +415,51 @@ testthat::test_that("#24: predict() refits with the mve and level used in select
                         type = "message")
   testthat::expect_false(isTRUE(all.equal(terra::values(p_mve)[, 1], ref)))
 })
+
+testthat::test_that("#26: missing test omission stays NA, failed fits are reported, columns are stable", {
+  set.seed(26)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150),
+                          bio_03 = rnorm(60, 50, 5))
+  env_test <- data.frame(bio_01 = rnorm(20, 20, 3),
+                         bio_12 = rnorm(20, 1000, 150), bio_03 = NA_real_)
+  env_bg <- data.frame(bio_01 = runif(2000, 5, 40),
+                       bio_12 = runif(2000, 200, 2500),
+                       bio_03 = runif(2000, 20, 80))
+  env_train$bio_99 <- 2 * env_train$bio_01
+  env_test$bio_99 <- 2 * env_test$bio_01
+  env_bg$bio_99 <- 2 * env_bg$bio_01
+  run <- function(crit) {
+    out <- NULL
+    utils::capture.output(
+      out <- tenm::ellipsoid_selection(env_train, env_test,
+                                       env_vars = c("bio_01", "bio_12",
+                                                    "bio_03", "bio_99"),
+                                       nvarstest = 2, level = 0.975,
+                                       mve = FALSE, env_bg = env_bg,
+                                       omr_criteria = crit, parallel = FALSE,
+                                       proc = TRUE, proc_iter = 5),
+      type = "message")
+    out
+  }
+  utils::capture.output({
+    sel <- run(0.1)
+    sel_none <- run(-1)
+  })
+  no_test <- grepl("bio_03", sel$fitted_vars)
+  ok <- sel$status == "ok"
+  testthat::expect_true(all(is.na(sel$om_rate_test[no_test])))
+  testthat::expect_true(max(sel$rank_by_omr_train_test[ok & !no_test]) <
+                          min(sel$rank_by_omr_train_test[no_test]))
+  failed <- sel[sel$status == "fit_failed", ]
+  testthat::expect_equal(failed$fitted_vars, "bio_01,bio_99")
+  testthat::expect_match(failed$fit_error, "singular")
+  testthat::expect_equal(nrow(sel), 6)
+  testthat::expect_identical(names(sel), names(sel_none))
+  testthat::expect_true("rank_omr_aucratio" %in% names(sel_none))
+  # ellipsoid_omr() reports a failed fit instead of returning NULL
+  r <- tenm::ellipsoid_omr(env_train[, c("bio_01", "bio_99")], NULL,
+                           env_bg[, c("bio_01", "bio_99")],
+                           cf_level = 0.975, mve = FALSE)
+  testthat::expect_equal(r$status, "fit_failed")
+})

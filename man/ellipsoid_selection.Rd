@@ -90,7 +90,13 @@ A data.frame with the following columns:
 \item "mean_omr_train_test": Mean value of omission rates (train and test).
 \item "rank_by_omr_train_test": Rank value of importance in model selection
 by omission rate.
-\item "rank_omr_aucratio": Rank value by AUC ratio.
+\item "rank_omr_aucratio": Rank value by AUC ratio (when \code{proc} is
+\code{TRUE}).
+\item "status": "ok", or "fit_failed" for models whose ellipsoid could not
+be fitted (e.g. singular covariance matrix). Failed models are listed
+after the ranked models, with \code{NA} metrics and ranks.
+\item "fit_error": The error message for "fit_failed" models, otherwise
+\code{NA}.
 }
 }
 \description{
@@ -102,7 +108,9 @@ ROC and binomial tests and c) the AUC value.
 Model selection occurs in environmental space (E-space). For each variable
 combination specified in nvarstest, the omission rate (omr) in E-space is
 computed using \code{\link[tenm]{inEllipsoid}} function.
-Results are ordered by omr of the testing data. If env_bg is provided,
+Results are ordered by omr of the testing data. A model with no testing
+records has an \code{NA} testing omission rate and is ranked after the
+models with testing data. If env_bg is provided,
 an estimated prevalence is computed and results are additionally ordered
 by partial AUC. Model selection can be run in parallel.
 For more details and examples go to \code{\link[tenm]{ellipsoid_omr}} help.
