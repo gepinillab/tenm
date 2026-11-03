@@ -63,7 +63,8 @@ This function cleans up duplicated occurrences based on the specified
 distance threshold. If \code{by_mask} is \code{T}, the distance is interpreted as
 pixel distance using the provided raster_mask; otherwise, it is interpreted
 as geographic distance. With \code{by_mask = TRUE}, records outside the extent
-of \code{raster_mask} are removed with a warning.
+of \code{raster_mask} are removed with a warning. Records with a missing
+longitude or latitude are removed with a message.
 
 Distance thinning is greedy: records are visited from the last row to the
 first, and a record is kept unless it lies within \code{threshold} of a record

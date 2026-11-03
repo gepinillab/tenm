@@ -585,3 +585,25 @@ testthat::test_that("#25: sp_temporal_data() checks layer sets, CRS and occurren
     tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", root),
     "3 of 3 record\\(s\\) fall outside")
 })
+
+testthat::test_that("#21: clean_dup() drops missing coordinates and keeps the input columns", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5, 9.5, 12.5), lat = c(1.5, 1.6, NA, 9.5, 12.5),
+                    year = 2000, id = 1:5)
+  testthat::expect_message(
+    a <- tenm::clean_dup(occ, "lon", "lat", threshold = 0.5),
+    "1 record\\(s\\) with a missing")
+  testthat::expect_equal(a$id, c(2L, 4L, 5L))
+  for (k in 0:1) {
+    b <- suppressMessages(tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE,
+                                          raster_mask = mask, n_ngbs = k,
+                                          progress = FALSE))
+    testthat::expect_named(b, names(occ))
+    xy <- suppressMessages(tenm::clean_dup(occ[, c("lon", "lat")], "lon", "lat",
+                                           by_mask = TRUE, raster_mask = mask,
+                                           n_ngbs = k, progress = FALSE))
+    testthat::expect_equal(xy, b[, c("lon", "lat")])
+  }
+  testthat::expect_equal(b$id, c(1L, 4L, 5L))
+})

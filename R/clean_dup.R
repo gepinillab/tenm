@@ -31,7 +31,8 @@
 #' distance threshold. If `by_mask` is \code{T}, the distance is interpreted as
 #' pixel distance using the provided raster_mask; otherwise, it is interpreted
 #' as geographic distance. With `by_mask = TRUE`, records outside the extent
-#' of `raster_mask` are removed with a warning.
+#' of `raster_mask` are removed with a warning. Records with a missing
+#' longitude or latitude are removed with a message.
 #'
 #' Distance thinning is greedy: records are visited from the last row to the
 #' first, and a record is kept unless it lies within `threshold` of a record
@@ -70,17 +71,20 @@ clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
                       process_ngbs_by =100,progress =TRUE){
   if(isTRUE(by_mask) && !inherits(raster_mask, "SpatRaster"))
     stop("'raster_mask' must be a SpatRaster when by_mask = TRUE", call. = FALSE)
-  data <- data[!is.na(data[,longitude]),]
+  na_xy <- is.na(data[[longitude]]) | is.na(data[[latitude]])
+  if(any(na_xy))
+    message(sum(na_xy), " record(s) with a missing longitude or latitude ",
+            "were removed")
+  data <- data[!na_xy, , drop = FALSE]
 
   #dat_sp <- sp::SpatialPointsDataFrame(data[,c(longitude ,latitude)],data)
   if(isTRUE(by_mask)){
-    dat_sp <- sf::st_as_sf(data,coords=c(longitude,latitude),
-                           crs=sf::st_crs(raster_mask))
     nbase <- 2*n_ngbs+1
     ngMat <- base::matrix(rep(1,nbase*nbase),
                           ncol =nbase,byrow = T )
     ngMat[n_ngbs+1,n_ngbs+1] <- 0
-    cellids <- terra::cellFromXY(raster_mask, sf::st_coordinates(dat_sp))
+    cellids <- terra::cellFromXY(raster_mask,
+                                 as.matrix(data[,c(longitude,latitude)]))
     # Records outside raster_mask have no cell; drop them in both branches
     n_out <- sum(is.na(cellids))
     if(n_out > 0L)
@@ -89,20 +93,12 @@ clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
               " use the same CRS.", call. = FALSE)
     ids_nodup <- which(!duplicated(cellids) & !is.na(cellids))
     cellids2 <- cellids[ids_nodup]
-    #dat2 <- dat_sp@data [ids_nodup,]
-    coo <- data.frame(sf::st_coordinates(dat_sp))
-    names(coo) <- c(longitude,latitude)
-    dat2 <- sf::st_drop_geometry(dat_sp)
-    dat2 <- data.frame(coo,dat2)
-    if(ncol(dat2)>=4){
-      dat2 <- dat2[ids_nodup,c(3,1,2,(4:ncol(dat2)))]
-    } else{
-      dat2 <- dat2[ids_nodup,c(3,1,2)]
-    }
+    # Subset the input so its columns and their order are kept
+    dat2 <- data[ids_nodup, , drop = FALSE]
     if (n_ngbs == 0){
       return(dat2)
     } else {
-      dat2$cellid <- cellids2
+      dat2_cells <- cellids2
       cellids2 <- base::sort(cellids2)
       n_cells <- length(cellids2)
       cut_offs <- ceiling(n_cells/process_ngbs_by)
@@ -151,8 +147,8 @@ clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
         }
 
       }
-      ids_nodup2 <- which(dat2$cellid %in% keep)
-      dat3 <- dat2[ids_nodup2,-ncol(dat2)]
+      ids_nodup2 <- which(dat2_cells %in% keep)
+      dat3 <- dat2[ids_nodup2, names(data), drop = FALSE]
       return(dat3)
     }
 
