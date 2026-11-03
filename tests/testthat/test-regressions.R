@@ -607,3 +607,21 @@ testthat::test_that("#21: clean_dup() drops missing coordinates and keeps the in
   }
   testthat::expect_equal(b$id, c(1L, 4L, 5L))
 })
+
+testthat::test_that("#8: clean_dup_by_date() works under a multisession plan", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5, 1.5, 1.6, 8.5),
+                    lat = c(1.5, 1.6, 5.5, 1.5, 1.6, 8.5),
+                    year = rep(c(2000, 2001), each = 3))
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  th <- 0.5
+  old_plan <- future::plan("multisession", workers = 2)
+  on.exit(future::plan(old_plan), add = TRUE)
+  a <- tenm::clean_dup_by_date(st, threshold = th, progress = FALSE)
+  b <- tenm::clean_dup_by_date(st, threshold = 1, by_mask = TRUE,
+                               raster_mask = mask, progress = FALSE)
+  testthat::expect_equal(nrow(a$temporal_df), 4)
+  testthat::expect_equal(nrow(b$temporal_df), 4)
+  testthat::expect_named(b$temporal_df, names(st$temporal_df))
+})

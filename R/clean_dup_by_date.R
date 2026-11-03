@@ -75,8 +75,10 @@ clean_dup_by_date <- function(this_species,threshold,by_mask = FALSE,
   stopifnot(inherits(this_species, "sp.temporal.modeling"))
   df_occs_date <- this_species$temporal_df
   df_occs_dateL <- split(df_occs_date,df_occs_date$layers_path,drop=T)
+  # Runs in this R session: the work per date is small, and a SpatRaster
+  # mask cannot be sent to future workers without terra::wrap().
   clean_by_date <- seq_along(df_occs_dateL) |>
-    furrr::future_map_dfr(function(x){
+    purrr::map(function(x){
       dd <- tenm::clean_dup(data = df_occs_dateL[[x]],
                             longitude = this_species$lon_lat_vars[1],
                             latitude = this_species$lon_lat_vars[2],
@@ -85,13 +87,10 @@ clean_dup_by_date <- function(this_species,threshold,by_mask = FALSE,
                             raster_mask = raster_mask,
                             n_ngbs = n_ngbs,
                             process_ngbs_by = process_ngbs_by,
-                            progress =progress)
+                            progress = progress)
       return(dd)
-    },.progress = TRUE,
-    .options = furrr::furrr_options(globals = c("this_species",
-                                                "df_occs_date",
-                                                "df_occs_dateL"),
-                                    seed = NULL))
+    },.progress = progress) |>
+    dplyr::bind_rows()
 
   sp.temp.data.clean <- list(temporal_df = clean_by_date,
                              sp_date_var = this_species$sp_date_var,
