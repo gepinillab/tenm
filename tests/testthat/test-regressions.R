@@ -648,3 +648,20 @@ testthat::test_that("#17: sp_temporal_data() accepts tibbles and the mdy format"
     tenm::sp_temporal_data(as.matrix(occ), "lon", "lat", "year", "y", "y", lyr$root),
     "data.frame")
 })
+
+testthat::test_that("#18: ex_by_date() keeps exact duplicate records as numeric rows", {
+  lyr <- make_year_layers("2014")
+  occ <- data.frame(lon = c(1.5, 1.5, 2.5, 3.5, 4.5), lat = c(1.5, 1.5, 2.5, 3.5, 4.5),
+                    year = 2014)
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  old_plan <- future::plan("sequential")
+  on.exit(future::plan(old_plan), add = TRUE)
+  set.seed(1)
+  testthat::expect_no_warning(ex <- suppressMessages(tenm::ex_by_date(st, 0.7)))
+  testthat::expect_type(ex$temporal_df$bio_01, "double")
+  testthat::expect_equal(nrow(ex$temporal_df), 5)
+  testthat::expect_false(".row" %in% names(ex$temporal_df))
+  cells <- terra::cellFromXY(lyr$template, as.matrix(occ[, c("lon", "lat")]))
+  testthat::expect_equal(ex$temporal_df$bio_01, 10000 + cells)
+  testthat::expect_true(all(c("bio_01", "bio_12") %in% names(ex$env_data)))
+})
