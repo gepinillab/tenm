@@ -191,11 +191,18 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                        projmods <-    seq_along(layers_path) |> purrr::map(function(x){
                          lnames <- list.files(layers_path[x],pattern = layers_ext)
                          lanames <- gsub(layers_ext,"",lnames)
-                         var_ids <- which(lanames %in% mod_vars)
-                         layer2proj <- list.files(layers_path[x],full.names = T,
-                                                  pattern = layers_ext)[var_ids]
+                         # Select layers by name, in model-variable order
+                         missing_vars <- setdiff(mod_vars, lanames)
+                         if(length(missing_vars) > 0L){
+                           stop("No layer for variable(s) ",
+                                paste(missing_vars, collapse = ", "),
+                                " in '", layers_path[x], "'", call. = FALSE)
+                         }
+                         layer2proj <- file.path(layers_path[x],
+                                                 lnames[match(mod_vars, lanames)])
 
                          slayers <- terra::rast(layer2proj)
+                         names(slayers) <- mod_vars
 
                          suitmod <- tenm::ellipsoid_projection(envlayers = slayers,
                                                                centroid = mod$centroid,

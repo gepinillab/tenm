@@ -20,7 +20,11 @@ ellipsoid_projection(
 )
 }
 \arguments{
-\item{envlayers}{A SpatRaster object of the niche variables.}
+\item{envlayers}{A SpatRaster object of the niche variables. If
+\code{centroid} is named, layers are matched to the variables by name
+(and reordered if needed); every variable in \code{names(centroid)} must be
+a layer name, unless the number of layers equals the number of variables,
+in which case layers are matched by position with a warning.}
 
 \item{centroid}{A vector with the values of the centers of the ellipsoid
 (see \code{\link[tenm]{cov_center}}).}
