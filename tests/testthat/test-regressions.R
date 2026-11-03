@@ -358,3 +358,23 @@ testthat::test_that("#20: non_pred_test_ids is NA when no test point is omitted"
                                env_bg, cf_level = 0.975, mve = FALSE)
   testthat::expect_equal(as.character(r_out$non_pred_test_ids), "6")
 })
+
+testthat::test_that("#22: pROC() handles one unique test value and integer suitabilities", {
+  set.seed(1)
+  bgv <- runif(5000)
+  a <- tenm::pROC(bgv, rep(0.5, 10), n_iter = 5, rseed = TRUE)$pROC_summary
+  testthat::expect_true(all(is.finite(a)))
+  b <- tenm::pROC(0:100, c(40, 60, 80, 90), n_iter = 5, rseed = TRUE,
+                  sub_sample = FALSE)$pROC_summary
+  testthat::expect_true(all(is.finite(b)))
+  set.seed(22)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150))
+  env_test <- data.frame(bio_01 = rep(20, 5), bio_12 = rep(1000, 5))
+  env_bg <- data.frame(bio_01 = runif(2000, 5, 40),
+                       bio_12 = runif(2000, 200, 2500))
+  r <- tenm::ellipsoid_omr(env_train, env_test, env_bg, cf_level = 0.975,
+                           mve = FALSE, proc = TRUE, proc_iter = 5)
+  testthat::expect_false(anyNA(r[, c("pval_proc", "env_bg_paucratio",
+                                     "env_bg_auc")]))
+})
