@@ -69,7 +69,9 @@ A data.frame with the following columns:
 \item "non_pred_train_ids": Row IDs of non-predicted training data.
 \item "om_rate_test"': Omission rate of the testing data.
 \item "non_pred_test_ids": Row IDs of non-predicted testing data.
-\item "bg_prevalence": Approximated prevalence of the model (see details).
+\item "bg_prevalence": Approximated prevalence of the model: the proportion
+of \code{env_bg} points inside the ellipsoid. It is also the null
+probability of the binomial test.
 \item "pval_bin": p-value of the binomial test.
 \item "pval_proc": p-value of the partial ROC test.
 \item "env_bg_paucratio": Environmental partial AUC ratio value.

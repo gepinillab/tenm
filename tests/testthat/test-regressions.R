@@ -463,3 +463,25 @@ testthat::test_that("#26: missing test omission stays NA, failed fits are report
                            cf_level = 0.975, mve = FALSE)
   testthat::expect_equal(r$status, "fit_failed")
 })
+
+testthat::test_that("#27: bg_prevalence is computed over the background only", {
+  set.seed(27)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150))
+  env_test <- data.frame(bio_01 = rnorm(20, 20, 3),
+                         bio_12 = rnorm(20, 1000, 150))
+  env_bg <- data.frame(bio_01 = runif(300, 5, 40),
+                       bio_12 = runif(300, 200, 2500))
+  r <- tenm::ellipsoid_omr(env_train, env_test, env_bg, cf_level = 0.975,
+                           mve = FALSE)
+  m <- tenm::cov_center(env_train, mve = FALSE, level = 0.975, vars = 1:2)
+  in_bg <- tenm::inEllipsoid(m$centroid, m$covariance, env_bg,
+                             level = 0.975)$in_Ellipsoid
+  in_te <- tenm::inEllipsoid(m$centroid, m$covariance, env_test,
+                             level = 0.975)$in_Ellipsoid
+  testthat::expect_equal(r$bg_prevalence, mean(in_bg))
+  testthat::expect_equal(r$pval_bin,
+                         stats::binom.test(sum(in_te), length(in_te),
+                                           p = mean(in_bg),
+                                           alternative = "greater")$p.value)
+})

@@ -38,7 +38,9 @@
 #'   - "non_pred_train_ids": Row IDs of non-predicted training data.
 #'   - "om_rate_test"': Omission rate of the testing data.
 #'   - "non_pred_test_ids": Row IDs of non-predicted testing data.
-#'   - "bg_prevalence": Approximated prevalence of the model (see details).
+#'   - "bg_prevalence": Approximated prevalence of the model: the proportion
+#'     of \code{env_bg} points inside the ellipsoid. It is also the null
+#'     probability of the binomial test.
 #'   - "pval_bin": p-value of the binomial test.
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
@@ -182,7 +184,8 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                                   level = cf_level)
     suits_bg <- exp(-0.5*in_ebg$mh_dist)
 
-    bg_table <- table(c(in_ebg$in_Ellipsoid,in_e$in_Ellipsoid))
+    # Prevalence over the background only (not the training presences)
+    bg_table <- table(in_ebg$in_Ellipsoid)
     succs_bg_ID <- which(names(bg_table) %in% "1")
     fails_bg_ID <- which(names(bg_table) %in% "0")
 
