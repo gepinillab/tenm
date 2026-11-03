@@ -70,6 +70,11 @@ Each record is matched to the folder with the nearest date. A message
 reports how many records have no folder of the same date, and a warning
 reports records outside the range of folder dates. Records whose date is
 missing or cannot be read are removed with a warning.
+
+The date folders used must all contain the same layer files. A warning is
+given when the layers have no CRS, or when records fall outside the extent
+of the layers (usually because the coordinates and the layers use
+different CRSs; occurrence coordinates are not reprojected).
 }
 \examples{
 library(tenm)

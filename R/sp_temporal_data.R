@@ -39,6 +39,11 @@
 #'  reports records outside the range of folder dates. Records whose date is
 #'  missing or cannot be read are removed with a warning.
 #'
+#'  The date folders used must all contain the same layer files. A warning is
+#'  given when the layers have no CRS, or when records fall outside the extent
+#'  of the layers (usually because the coordinates and the layers use
+#'  different CRSs; occurrence coordinates are not reprojected).
+#'
 #' @examples
 #' library(tenm)
 #' #A data.frame with occurrences points information of Abronia graminea.
@@ -170,6 +175,8 @@ sp_temporal_data <- function(occs,longitude,
       temporal_df <- data.frame(occs[date_in_occs_index,c(lon_lat_vars,sp_date_var)],
                                 layer_dates = layers_dates[dates_ids],
                                 layers_path=layers_all[dates_ids])
+      validate_layers(temporal_df$layers_path, layers_ext,
+                      temporal_df[, lon_lat_vars])
 
       sp_temp_data <- list(temporal_df = temporal_df,
                            sp_date_var = sp_date_var,

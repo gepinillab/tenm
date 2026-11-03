@@ -560,3 +560,28 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
     tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y",
                            file.path(lyr$root, "nope")), "does not exist")
 })
+
+testthat::test_that("#25: sp_temporal_data() checks layer sets, CRS and occurrence extent", {
+  occ <- data.frame(lon = c(2.5, 5.5, 7.5), lat = c(2.5, 5.5, 7.5),
+                    year = c(2000, 2001, 2001))
+  lyr <- make_year_layers(c("2000", "2001"))
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root))
+  # A folder without one of the variables
+  file.remove(file.path(lyr$root, "2001", "bio_12.tif"))
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    "2001: missing bio_12.tif")
+  # Occurrences outside the layers (lon/lat points, projected layers)
+  root <- tempfile("tenm_proj_")
+  for (f in c("2000", "2001")) {
+    dir.create(file.path(root, f), recursive = TRUE)
+    r <- terra::rast(nrows = 5, ncols = 5, xmin = 1e6, xmax = 2e6, ymin = 1e6,
+                     ymax = 2e6, crs = "EPSG:3857", vals = 1:25)
+    names(r) <- "bio_01"
+    terra::writeRaster(r, file.path(root, f, "bio_01.tif"))
+  }
+  testthat::expect_warning(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", root),
+    "3 of 3 record\\(s\\) fall outside")
+})
