@@ -185,9 +185,11 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
       #binBG <- bin_table[[2]]/(bin_table[[1]]+bin_table[[2]])
       test_fail <-  occs_fail_test
       test_succs <- occs_succs_test
-      p_bin <- 1 - stats::pbinom(test_succs,
-                                 size=test_succs+test_fail,
-                                 prob = prevBG)
+      # One-sided binomial test: P(X >= test_succs)
+      p_bin <- stats::pbinom(test_succs - 1,
+                             size=test_succs+test_fail,
+                             prob = prevBG,
+                             lower.tail = FALSE)
       d_results <-data.frame( d_results,
                               pval_bin=p_bin)
       if(proc){

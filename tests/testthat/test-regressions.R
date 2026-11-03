@@ -74,3 +74,25 @@ testthat::test_that("#3: predict() matches layers to model variables by name", {
                                covar = diag(3), plot = FALSE),
     "bio_05")
 })
+
+testthat::test_that("#4: pval_bin is the one-sided binomial P(X >= k)", {
+  set.seed(4)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150))
+  env_bg <- data.frame(bio_01 = runif(2000, 5, 40),
+                       bio_12 = runif(2000, 300, 2000))
+  tests <- list(
+    all_inside = data.frame(bio_01 = c(19, 20, 21, 20, 20.5),
+                            bio_12 = c(1000, 980, 1020, 1050, 990)),
+    some_outside = data.frame(bio_01 = c(rnorm(9, 20, 2), 35, 6, 38),
+                              bio_12 = c(rnorm(9, 1000, 100), 1900, 350, 400)))
+  for (env_test in tests) {
+    r <- tenm::ellipsoid_omr(env_data = env_train, env_test = env_test,
+                             env_bg = env_bg, cf_level = 0.975, mve = FALSE)
+    n <- nrow(env_test)
+    k <- round(n * (1 - r$om_rate_test))
+    ref <- stats::binom.test(k, n, p = r$bg_prevalence,
+                             alternative = "greater")$p.value
+    testthat::expect_equal(r$pval_bin, ref)
+  }
+})
