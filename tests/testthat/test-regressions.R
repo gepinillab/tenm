@@ -306,3 +306,36 @@ testthat::test_that("#15: tenm_selection() passes its pROC settings to pROC()", 
   testthat::expect_false(isTRUE(all.equal(unlist(direct[1, cols]),
                                           unlist(default[1, cols]))))
 })
+
+testthat::test_that("#16: predict() accepts plot = FALSE, names bad variables and defaults layers_ext", {
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  dir70 <- system.file("extdata/bio_1970_2000", package = "tenm")
+  bio_01 <- terra::rast(file.path(dir70, "bio_01.tif"))
+  bio_12 <- terra::rast(file.path(dir70, "bio_12.tif"))
+  set.seed(16)
+  cells <- which(!is.na(terra::values(bio_01)[, 1]) &
+                   !is.na(terra::values(bio_12)[, 1]))
+  cells <- sample(cells, 40)
+  train <- data.frame(bio_01 = terra::values(bio_01)[cells, 1],
+                      bio_12 = terra::values(bio_12)[cells, 1],
+                      trian_test = "Train")
+  mod_sel <- list(temporal_df = train, layers_ext = ".tif$",
+                  env_bg = train[, c("bio_01", "bio_12")],
+                  mods_table = data.frame(fitted_vars = "bio_01,bio_12"))
+  class(mod_sel) <- "sp.temporal.selection"
+  utils::capture.output({
+    p1 <- predict(mod_sel, model_variables = c("bio_01", "bio_12"),
+                  layers_path = dir70, layers_ext = ".tif$", mve = FALSE,
+                  plot = FALSE)
+    p2 <- predict(mod_sel, model_variables = c("bio_01", "bio_12"),
+                  layers_path = dir70, mve = FALSE)
+  })
+  testthat::expect_s4_class(p1, "SpatRaster")
+  testthat::expect_equal(terra::values(p2), terra::values(p1),
+                         ignore_attr = TRUE)
+  testthat::expect_error(
+    predict(mod_sel, model_variables = c("bio_01", "bio_99"),
+            layers_path = dir70, layers_ext = ".tif$"),
+    "Not valid variable names: bio_99")
+})
