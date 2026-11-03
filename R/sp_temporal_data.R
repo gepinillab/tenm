@@ -34,6 +34,11 @@
 #'  some other arrangement like month/year ("my"), month/year/day ("myd"),
 #'  day/month/year ("dmy").
 #'
+#'  Each record is matched to the folder with the nearest date. A message
+#'  reports how many records have no folder of the same date, and a warning
+#'  reports records outside the range of folder dates. Records whose date is
+#'  missing or cannot be read are removed with a warning.
+#'
 #' @examples
 #' library(tenm)
 #' #A data.frame with occurrences points information of Abronia graminea.
@@ -91,8 +96,14 @@ sp_temporal_data <- function(occs,longitude,
         date_in_occs <- lubridate::dmy(occs[,sp_date_var])
       }
 
+      if(!dir.exists(layers_by_date_dir))
+        stop("'layers_by_date_dir' does not exist: ", layers_by_date_dir,
+             call. = FALSE)
       layers_names <- list.dirs(path = layers_by_date_dir,recursive = F,
                                 full.names = F)
+      if(!length(layers_names))
+        stop("'layers_by_date_dir' has no date folders: ", layers_by_date_dir,
+             call. = FALSE)
 
       if(!layers_date_format %in% date_formats)
         stop("layers_date_format should have one of these values ",
@@ -111,12 +122,47 @@ sp_temporal_data <- function(occs,longitude,
         layers_dates <- lubridate::dmy(layers_names)
       }
 
+      if(all(is.na(layers_dates)))
+        stop("No folder name in 'layers_by_date_dir' could be read with ",
+             "layers_date_format = '", layers_date_format, "'. Folder names: ",
+             paste(utils::head(layers_names, 5), collapse = ", "),
+             call. = FALSE)
+      if(anyNA(layers_dates))
+        warning(sum(is.na(layers_dates)), " folder(s) in 'layers_by_date_dir' ",
+                "could not be read with layers_date_format = '",
+                layers_date_format, "' and were ignored: ",
+                paste(utils::head(layers_names[is.na(layers_dates)], 5),
+                      collapse = ", "), call. = FALSE)
+
       date_in_occs_index <- which(!is.na(date_in_occs))
+      if(!length(date_in_occs_index))
+        stop("No occurrence date in '", sp_date_var, "' could be read with ",
+             "occ_date_format = '", occ_date_format, "'", call. = FALSE)
+      if(length(date_in_occs_index) < length(date_in_occs))
+        warning(length(date_in_occs) - length(date_in_occs_index),
+                " record(s) with a missing date or a date that could not be ",
+                "read with occ_date_format = '", occ_date_format,
+                "' were removed", call. = FALSE)
       date_sps <- date_in_occs[date_in_occs_index]
       # environmental layers by date
 
       dates_ids <- nearest_date_id(occ_dates = date_sps,
                                    layers_dates = layers_dates)
+      # Report records without a layer of the same date
+      date_gap <- abs(as.numeric(date_sps - layers_dates[dates_ids]))
+      n_occ <- length(date_gap)
+      n_exact <- sum(date_gap == 0)
+      if(n_exact < n_occ){
+        message(n_exact, " of ", n_occ, " records match a layer date exactly; ",
+                n_occ - n_exact, " were matched to the nearest layer date ",
+                "(largest gap: ", max(date_gap), " days)")
+      }
+      rng <- range(layers_dates, na.rm = TRUE)
+      outside <- date_sps < rng[1] | date_sps > rng[2]
+      if(any(outside))
+        warning(sum(outside), " record(s) are outside the range of layer dates (",
+                rng[1], " to ", rng[2], ") and were matched to the first or ",
+                "last layer date", call. = FALSE)
 
       layers_all <- list.dirs(path = layers_by_date_dir,recursive = FALSE,
                               full.names = TRUE)

@@ -531,3 +531,32 @@ testthat::test_that("#11: clean_dup() drops records outside the mask with a warn
     testthat::expect_equal(res$id, 4L)
   }
 })
+
+testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and bad inputs", {
+  lyr <- make_year_layers(c("1939", "1941", "2016"))
+  occ <- data.frame(lon = 5.5, lat = 5.5, year = c(1945, 1939, 1890, 2050, 2016, NA))
+  msgs <- character()
+  st <- withCallingHandlers(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      msgs <<- c(msgs, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
+  testthat::expect_equal(nrow(st$temporal_df), 5)
+  testthat::expect_true(any(grepl("2 of 5 records match a layer date exactly", msgs)))
+  testthat::expect_true(any(grepl("2 record\\(s\\) are outside the range", msgs)))
+  testthat::expect_true(any(grepl("1 record\\(s\\) with a missing date", msgs)))
+  # Exact matches only: no message or warning
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ[c(2, 5), ], "lon", "lat", "year", "y", "y", lyr$root))
+  testthat::expect_error(
+    suppressWarnings(tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "dmy",
+                                            lyr$root)), "layers_date_format")
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y",
+                           file.path(lyr$root, "nope")), "does not exist")
+})

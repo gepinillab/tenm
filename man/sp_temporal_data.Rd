@@ -65,6 +65,11 @@ The format of dates for each layer can be organized in a particular pattern,
 for example year/month/day ("ymd"), year/month ("ym"), just year ("y") or
 some other arrangement like month/year ("my"), month/year/day ("myd"),
 day/month/year ("dmy").
+
+Each record is matched to the folder with the nearest date. A message
+reports how many records have no folder of the same date, and a warning
+reports records outside the range of folder dates. Records whose date is
+missing or cannot be read are removed with a warning.
 }
 \examples{
 library(tenm)
