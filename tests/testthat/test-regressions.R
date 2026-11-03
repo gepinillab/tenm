@@ -517,3 +517,17 @@ testthat::test_that("#10: distance thinning keeps records whose only neighbours 
   dropped <- setdiff(pts$id, kept)
   testthat::expect_true(all(vapply(dropped, function(i) any(d[i, kept] < 0.5), logical(1))))
 })
+
+testthat::test_that("#11: clean_dup() drops records outside the mask with a warning", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  out <- data.frame(id = 1:4, lon = c(-120, -121, -122, 10.5),
+                    lat = c(40, 41, 42, 10.5))
+  for (k in 0:1) {
+    testthat::expect_warning(
+      res <- tenm::clean_dup(out, "lon", "lat", by_mask = TRUE,
+                             raster_mask = mask, n_ngbs = k, progress = FALSE),
+      "3 record\\(s\\) fall outside")
+    testthat::expect_equal(res$id, 4L)
+  }
+})

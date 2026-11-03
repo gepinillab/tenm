@@ -30,7 +30,8 @@
 #' This function cleans up duplicated occurrences based on the specified
 #' distance threshold. If `by_mask` is \code{T}, the distance is interpreted as
 #' pixel distance using the provided raster_mask; otherwise, it is interpreted
-#' as geographic distance.
+#' as geographic distance. With `by_mask = TRUE`, records outside the extent
+#' of `raster_mask` are removed with a warning.
 #'
 #' Distance thinning is greedy: records are visited from the last row to the
 #' first, and a record is kept unless it lies within `threshold` of a record
@@ -80,7 +81,13 @@ clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
                           ncol =nbase,byrow = T )
     ngMat[n_ngbs+1,n_ngbs+1] <- 0
     cellids <- terra::cellFromXY(raster_mask, sf::st_coordinates(dat_sp))
-    ids_nodup <- which(!duplicated (cellids))
+    # Records outside raster_mask have no cell; drop them in both branches
+    n_out <- sum(is.na(cellids))
+    if(n_out > 0L)
+      warning(n_out, " record(s) fall outside the extent of 'raster_mask' and",
+              " were removed. Check that the coordinates and 'raster_mask'",
+              " use the same CRS.", call. = FALSE)
+    ids_nodup <- which(!duplicated(cellids) & !is.na(cellids))
     cellids2 <- cellids[ids_nodup]
     #dat2 <- dat_sp@data [ids_nodup,]
     coo <- data.frame(sf::st_coordinates(dat_sp))
