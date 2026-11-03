@@ -141,3 +141,29 @@ testthat::test_that("#5: bg_by_date() is keyed by date folder, not row position"
     testthat::expect_equal(bg$bio_01, year_index * 10000 + cell)
   }
 })
+
+testthat::test_that("#6: ex_by_date() assigns train/test labels within each date", {
+  future::plan("sequential")
+  folders <- c("12-1939", "01-1940", "03-1939")
+  n_occ <- c(1, 2, 4)
+  lay <- make_year_layers(folders)
+  occs <- data.frame(lon = c(5.5, 10.5, 12.5, 20.5, 22.5, 24.5, 26.5),
+                     lat = c(5.5, 10.5, 12.5, 20.5, 22.5, 24.5, 26.5),
+                     date = rep(folders, n_occ))
+  st <- tenm::sp_temporal_data(occs = occs, longitude = "lon",
+                               latitude = "lat", sp_date_var = "date",
+                               occ_date_format = "my",
+                               layers_date_format = "my",
+                               layers_by_date_dir = lay$root,
+                               layers_ext = "*.tif$")
+  for (seed in 1:3) {
+    set.seed(seed)
+    tdf <- tenm::ex_by_date(st, train_prop = 0.7)$temporal_df
+    folder <- basename(tdf$layers_path)
+    n_train <- vapply(folders, function(f) {
+      sum(tdf$trian_test[folder == f] == "Train")
+    }, numeric(1))
+    testthat::expect_equal(unname(n_train), c(1, 1, 3))
+    testthat::expect_equal(as.vector(table(factor(folder, folders))), n_occ)
+  }
+})

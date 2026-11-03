@@ -99,8 +99,9 @@ ex_by_date <- function(this_species,train_prop=0.7){
 
     }
     return(train_test)
-  }) |> unlist()
-  years_env$trian_test <- trian_test
+  })
+  # Put each date's labels back on that date's rows
+  years_env$trian_test <- unsplit(trian_test, years_env$layer_dates)
 
   #train_data <- which(years_env$trian_test=="Train")
 
