@@ -1,3 +1,53 @@
+# tenm 0.5.1.9002
+
+## Bug fixes
+
+* `ellipsoid_omr()` no longer takes the test-data branch when an object
+  called `in_etest` exists in the global environment. Before, a call
+  without `env_test` failed with "object 'occs_fail_test' not found" (#14).
+
+* `tenm_selection()` now passes `RandomPercent`, `sub_sample` and
+  `sub_sample_size` to `pROC()`, and gains an `E_percent` argument. Before,
+  they were ignored and `pROC()` always ran with `boost_percent = 50`,
+  `sub_sample = TRUE`, `sub_sample_size = 1000` and `E_percent = 5`.
+  `ellipsoid_selection()` and `ellipsoid_omr()` gain `E_percent`,
+  `boost_percent`, `sub_sample` and `sub_sample_size` arguments with those
+  values as defaults, so results with default arguments are unchanged (#15).
+
+* `predict()` gains a `plot` argument (default `FALSE`). Before, `plot = TRUE`
+  was hard-coded, so `predict(..., plot = FALSE)` failed and every projected
+  layer opened a plot. The invalid-variable error now names the invalid
+  variables instead of printing `NULL`, and `layers_ext = NULL` now falls
+  back to the object's `layers_ext` instead of failing in `gsub()` (#16).
+
+* `ellipsoid_omr()`: `non_pred_test_ids` is now `NA` when no test point is
+  omitted. Before, it was `""` (#20).
+
+* `pROC()` no longer fails when all test values are equal, or when the
+  values have no decimal part (e.g. 0-100 suitabilities). Inside
+  `ellipsoid_omr()` these errors made the partial ROC columns silently `NA`.
+  Results for inputs that worked before are unchanged (#22).
+
+* `tenm_selection()` now stores `mve` and `ellipsoid_level` in the
+  `sp.temporal.selection` object, and `predict()` uses them when `mve` and
+  `level` are not supplied. Before, `predict()` always refit with
+  `mve = TRUE, level = 0.975`, whatever settings were used in selection (#24).
+
+* `ellipsoid_selection()` keeps a missing test omission rate (no test
+  records for a variable combination) as `NA` instead of 0, and ranks those
+  models after the models with test data. Models whose ellipsoid cannot be
+  fitted (e.g. singular covariance) are now listed last with
+  `status = "fit_failed"` and the error message in `fit_error`, instead of
+  being dropped; `ellipsoid_omr()` returns such a row instead of `NULL`.
+  `rank_omr_aucratio` is now present (with `proc = TRUE`) even when no model
+  meets `omr_criteria`, and every table has `status` and `fit_error`
+  columns (#26).
+
+* `ellipsoid_omr()`: `bg_prevalence`, which is also the null probability of
+  the binomial test (`pval_bin`), is now the proportion of background points
+  inside the ellipsoid. Before, the training presences were counted as
+  background, which inflated `bg_prevalence` and `pval_bin` (#27).
+
 # tenm 0.5.1.9001
 
 ## Bug fixes
