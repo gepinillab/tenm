@@ -12,9 +12,13 @@
 #' @param layers_ext File extension of the raster layers. If \code{NULL}
 #' (the default), the \code{layers_ext} stored in \code{object} is used.
 #' @param mve Logical indicating whether to use the minimum volume
-#' ellipsoid algorithm.
+#' ellipsoid algorithm. If not supplied, the \code{mve} setting stored in
+#' \code{object} by \code{\link[tenm]{tenm_selection}} is used (\code{TRUE}
+#' for objects that do not store it).
 #' @param level Proportion of data to include inside the ellipsoid
-#' if mve is \code{TRUE}.
+#' if mve is \code{TRUE}. If not supplied, the \code{ellipsoid_level} stored
+#' in \code{object} by \code{\link[tenm]{tenm_selection}} is used (0.975 for
+#' objects that do not store it).
 #' @param output Character indicating if the model outputs "suitability" values
 #'  or "mahalanobis" distances.
 #' @param plot Logical. If \code{TRUE}, plot the niche in environmental space
@@ -124,6 +128,12 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                             choices = c("suitability",
                                                         "mahalanobis"))
 
+
+                     # Refit with the settings used in model selection
+                     if(missing(mve) && !is.null(object$mve)) mve <- object$mve
+                     if(missing(level) && !is.null(object$ellipsoid_level)){
+                       level <- object$ellipsoid_level
+                     }
 
                      mod_table <- object$mods_table
                      model_vars <- stringr::str_split(mod_table$fitted_vars,",")

@@ -26,7 +26,9 @@
 #' for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.
 #' @return An object of class "sp.temporal.selection" containing metadata of
 #' model statistics of the calibrated models, obtainable from the "mods_table"
-#' attribute. The function internally uses
+#' attribute. The "mve" and "ellipsoid_level" elements store the settings used
+#' to fit the models; \code{predict()} uses them by default. The function
+#' internally uses
 #' \code{\link[tenm]{ellipsoid_selection}}
 #' to obtain model statistics. Note that this function inherits attributes
 #' from classes "sp.temporal.modeling"
@@ -145,7 +147,9 @@ tenm_selection <- function(this_species,omr_criteria =0.1,
                            lon_lat_vars =this_species$lon_lat_vars,
                            layers_ext= this_species$layers_ext,
                            env_bg = this_species$env_bg,
-                           mods_table = seleccion_mods)
+                           mods_table = seleccion_mods,
+                           mve = mve,
+                           ellipsoid_level = ellipsoid_level)
   class(sp.temp.data.env) <- c("sp.temporal.selection")
   return(sp.temp.data.env)
 }

@@ -378,3 +378,40 @@ testthat::test_that("#22: pROC() handles one unique test value and integer suita
   testthat::expect_false(anyNA(r[, c("pval_proc", "env_bg_paucratio",
                                      "env_bg_auc")]))
 })
+
+testthat::test_that("#24: predict() refits with the mve and level used in selection", {
+  dir70 <- system.file("extdata/bio_1970_2000", package = "tenm")
+  lyr <- terra::rast(file.path(dir70, c("bio_01.tif", "bio_12.tif")))
+  names(lyr) <- c("bio_01", "bio_12")
+  v <- terra::values(lyr)
+  ok_rows <- stats::complete.cases(v)
+  set.seed(24)
+  cells <- sample(which(ok_rows), 80)
+  tdf <- data.frame(bio_01 = v[cells, 1], bio_12 = v[cells, 2],
+                    trian_test = rep(c("Train", "Test"), c(60, 20)))
+  tdf[1:6, "bio_12"] <- tdf[1:6, "bio_12"] * 3
+  sp_bg <- list(temporal_df = tdf, layers_ext = ".tif$",
+                env_bg = as.data.frame(v[ok_rows, ]))
+  class(sp_bg) <- "sp.temporal.bg"
+  utils::capture.output(
+    sel <- tenm::tenm_selection(sp_bg, omr_criteria = 0.1,
+                                ellipsoid_level = 0.95,
+                                vars2fit = c("bio_01", "bio_12"),
+                                nvars_to_fit = 2, mve = FALSE, proc = FALSE,
+                                parallel = FALSE))
+  testthat::expect_false(sel$mve)
+  testthat::expect_equal(sel$ellipsoid_level, 0.95)
+  train <- tdf[tdf$trian_test == "Train", c("bio_01", "bio_12")]
+  ref_mod <- tenm::cov_center(train, mve = FALSE, level = 0.95,
+                              vars = c("bio_01", "bio_12"))
+  ref <- rep(NA_real_, nrow(v))
+  ref[ok_rows] <- exp(-0.5 * stats::mahalanobis(v[ok_rows, ], ref_mod$centroid,
+                                                ref_mod$covariance))
+  utils::capture.output(p <- predict(sel, layers = lyr), type = "message")
+  testthat::expect_equal(terra::values(p)[, 1], ref)
+  # An explicit mve still overrides the stored setting
+  set.seed(1)
+  utils::capture.output(p_mve <- predict(sel, layers = lyr, mve = TRUE),
+                        type = "message")
+  testthat::expect_false(isTRUE(all.equal(terra::values(p_mve)[, 1], ref)))
+})
