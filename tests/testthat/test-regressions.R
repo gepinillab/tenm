@@ -485,3 +485,18 @@ testthat::test_that("#27: bg_prevalence is computed over the background only", {
                                            p = mean(in_bg),
                                            alternative = "greater")$p.value)
 })
+
+testthat::test_that("#9: clean_dup() stops when by_mask = TRUE and raster_mask is not a SpatRaster", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5), lat = c(1.5, 1.6, 5.5), id = 1:3)
+  testthat::expect_error(
+    tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = mask[1],
+                    progress = FALSE), "SpatRaster")
+  testthat::expect_error(
+    tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = NULL,
+                    progress = FALSE), "SpatRaster")
+  testthat::expect_equal(
+    nrow(tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = mask,
+                         progress = FALSE)), 2)
+})

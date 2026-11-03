@@ -62,11 +62,12 @@
 clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
                       raster_mask = NULL, n_ngbs = 0,
                       process_ngbs_by =100,progress =TRUE){
+  if(isTRUE(by_mask) && !inherits(raster_mask, "SpatRaster"))
+    stop("'raster_mask' must be a SpatRaster when by_mask = TRUE", call. = FALSE)
   data <- data[!is.na(data[,longitude]),]
 
-
   #dat_sp <- sp::SpatialPointsDataFrame(data[,c(longitude ,latitude)],data)
-  if(by_mask == TRUE && methods::is(raster_mask, "SpatRaster")){
+  if(isTRUE(by_mask)){
     dat_sp <- sf::st_as_sf(data,coords=c(longitude,latitude),
                            crs=sf::st_crs(raster_mask))
     nbase <- 2*n_ngbs+1
