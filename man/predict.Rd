@@ -16,6 +16,7 @@ conditions}
   mve = TRUE,
   level = 0.975,
   output = "suitability",
+  plot = FALSE,
   ...
 )
 }
@@ -30,16 +31,25 @@ SpatRaster.}
 
 \item{layers_path}{Path to the directory containing raster layers.}
 
-\item{layers_ext}{File extension of the raster layers.}
+\item{layers_ext}{File extension of the raster layers. If \code{NULL}
+(the default), the \code{layers_ext} stored in \code{object} is used.}
 
 \item{mve}{Logical indicating whether to use the minimum volume
-ellipsoid algorithm.}
+ellipsoid algorithm. If not supplied, the \code{mve} setting stored in
+\code{object} by \code{\link[tenm]{tenm_selection}} is used (\code{TRUE}
+for objects that do not store it).}
 
 \item{level}{Proportion of data to include inside the ellipsoid
-if mve is \code{TRUE}.}
+if mve is \code{TRUE}. If not supplied, the \code{ellipsoid_level} stored
+in \code{object} by \code{\link[tenm]{tenm_selection}} is used (0.975 for
+objects that do not store it).}
 
 \item{output}{Character indicating if the model outputs "suitability" values
 or "mahalanobis" distances.}
+
+\item{plot}{Logical. If \code{TRUE}, plot the niche in environmental space
+for each projection (see \code{\link[tenm]{ellipsoid_projection}}).
+Default is \code{FALSE}.}
 
 \item{...}{Additional parameters passed to
 \code{\link[tenm]{ellipsoid_projection}}.}

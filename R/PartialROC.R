@@ -232,7 +232,9 @@ proc_precision <- function(mod_vals,test_data){
 
   min_vals <- min(mod_vals,na.rm = TRUE)
 
-  percentil_test <- unique(sort(stats::na.omit(test_data)))[2]
+  test_vals <- unique(sort(stats::na.omit(test_data)))
+  # Second smallest test value; the smallest one if there is only one
+  percentil_test <- if (length(test_vals) >= 2L) test_vals[2] else test_vals[1]
 
 
   #percentil_test <- stats::quantile(test_data,
@@ -247,7 +249,10 @@ proc_precision <- function(mod_vals,test_data){
   else {
     med <- stringr::str_extract_all(partition_flag, pattern = "[0-9]|[.]")
     med <- unlist(med)
-    med <- med[-(1:which(med == "."))]
+    dot <- which(med == ".")
+    # No decimal part (e.g. values on a 0-100 scale)
+    if (length(dot) == 0L) return(3)
+    med <- med[-(1:dot)]
     med1 <- which(med != 0)
     ndigits <- ifelse(med1[1] <= 2, 3, 4)
   }

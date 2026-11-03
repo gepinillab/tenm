@@ -796,7 +796,8 @@ env_layers_2016 <- list.dirs(tempora_layers_dir,
 suit_2016 <- predict(mod_sel,
                      model_variables = c("bio_01","bio_03","bio_12"),
                      layers_path =env_layers_2016 ,
-                     layers_ext = ".tif$")
+                     layers_ext = ".tif$",
+                     plot = TRUE)
 #>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
 ```
 
@@ -818,7 +819,8 @@ layers_70_00_dir <- system.file("extdata/bio_1970_2000",package = "tenm")
 suit_1970_2000 <- predict(mod_sel,
                           model_variables = c("bio_01","bio_03","bio_12"),
                           layers_path = layers_70_00_dir,
-                          layers_ext = ".tif$")
+                          layers_ext = ".tif$",
+                          plot = TRUE)
 #>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
 ```
 

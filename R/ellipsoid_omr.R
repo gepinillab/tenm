@@ -21,6 +21,16 @@
 #'   bootstrap.
 #' @param rseed Logical. If \code{TRUE}, sets a random seed for the partial
 #' ROC bootstrap. Default is \code{TRUE}.
+#' @param E_percent Numeric value from 0 to 100 used as the threshold (E)
+#' for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.
+#' @param boost_percent Numeric value from 0 to 100 representing the
+#' percentage of testing data used in each partial ROC bootstrap iteration.
+#' Default is 50. See \code{\link[tenm]{pROC}}.
+#' @param sub_sample Logical. Whether to use a subsample of the background
+#' suitability values for the partial ROC test. Default is \code{TRUE}.
+#' See \code{\link[tenm]{pROC}}.
+#' @param sub_sample_size Size of the subsample used when \code{sub_sample}
+#' is \code{TRUE}. Default is 1000. See \code{\link[tenm]{pROC}}.
 #' @return A data.frame with the following columns:
 #'   - "fitted_vars": Names of variables that were fitted.
 #'   - "nvars": Number of fitted variables
@@ -28,11 +38,17 @@
 #'   - "non_pred_train_ids": Row IDs of non-predicted training data.
 #'   - "om_rate_test"': Omission rate of the testing data.
 #'   - "non_pred_test_ids": Row IDs of non-predicted testing data.
-#'   - "bg_prevalence": Approximated prevalence of the model (see details).
+#'   - "bg_prevalence": Approximated prevalence of the model: the proportion
+#'     of \code{env_bg} points inside the ellipsoid. It is also the null
+#'     probability of the binomial test.
 #'   - "pval_bin": p-value of the binomial test.
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
+#'
+#'   If the ellipsoid cannot be fitted (for example, the covariance matrix is
+#'   singular), a one-row data.frame with "fitted_vars", "nvars",
+#'   "status" (\code{"fit_failed"}) and "fit_error" (the error message).
 
 #' @examples
 #' \donttest{
@@ -65,7 +81,9 @@
 #' @export
 
 ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
-                          proc=FALSE,proc_iter=100,rseed=TRUE){
+                          proc=FALSE,proc_iter=100,rseed=TRUE,
+                          E_percent=5,boost_percent=50,
+                          sub_sample=TRUE,sub_sample_size=1000){
   emd <- try(tenm::cov_center(data = env_data,
                                mve = mve,
                                level = cf_level,
@@ -73,8 +91,13 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
              silent = TRUE)
 
   message1 <- attr(emd,"class")== "try-error"
-  if(length(message1)>0L)
-    return()
+  if(length(message1)>0L){
+    # Report the failed fit instead of returning NULL
+    return(data.frame(fitted_vars = paste(colnames(env_data), collapse = ","),
+                      nvars = ncol(env_data),
+                      status = "fit_failed",
+                      fit_error = trimws(conditionMessage(attr(emd, "condition")))))
+  }
 
   in_e <-  inEllipsoid(centroid = emd$centroid,
                        eShape = emd$covariance,
@@ -113,7 +136,8 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                           nvars=length(emd$centroid),
                           om_rate_train= omrate_train,
                           non_pred_train_ids = fails_train_ids)
-  if(is.data.frame(env_test) || is.matrix(env_test)){
+  has_test <- is.data.frame(env_test) || is.matrix(env_test)
+  if(has_test){
     in_etest <-  tenm::inEllipsoid(centroid = emd$centroid,
                                     eShape = emd$covariance,
                                     env_data = env_test,
@@ -121,7 +145,7 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
 
     fails_test_ids <- which(in_etest$in_Ellipsoid== 0)
 
-    if(length(fails_train_ids)>0){
+    if(length(fails_test_ids)>0){
       fails_test_ids <- paste0(fails_test_ids,collapse = ",")
     } else {
       fails_test_ids <- NA
@@ -160,7 +184,8 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                                   level = cf_level)
     suits_bg <- exp(-0.5*in_ebg$mh_dist)
 
-    bg_table <- table(c(in_ebg$in_Ellipsoid,in_e$in_Ellipsoid))
+    # Prevalence over the background only (not the training presences)
+    bg_table <- table(in_ebg$in_Ellipsoid)
     succs_bg_ID <- which(names(bg_table) %in% "1")
     fails_bg_ID <- which(names(bg_table) %in% "0")
 
@@ -179,7 +204,7 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
     d_results <-data.frame( d_results,
                             bg_prevalence= prevBG)
 
-    if(exists("in_etest")){
+    if(has_test){
       #bin_table <- table(c(in_ebg$in_Ellipsoid,
       #                     in_etest$in_Ellipsoid))
       #binBG <- bin_table[[2]]/(bin_table[[1]]+bin_table[[2]])
@@ -194,7 +219,11 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                               pval_bin=p_bin)
       if(proc){
         proc <- try(tenm::pROC(suits_bg,test_data = suits_val,
-                            n_iter = proc_iter,rseed = rseed))
+                            n_iter = proc_iter,rseed = rseed,
+                            E_percent = E_percent,
+                            boost_percent = boost_percent,
+                            sub_sample = sub_sample,
+                            sub_sample_size = sub_sample_size))
         message1 <- attr(proc,"class")== "try-error"
         if(length(message1)>0L){
           pval_proc <- NA

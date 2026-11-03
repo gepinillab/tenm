@@ -17,7 +17,8 @@ tenm_selection(
   RandomPercent = 50,
   NoOfIteration = 1000,
   parallel = TRUE,
-  n_cores = 4
+  n_cores = 4,
+  E_percent = 5
 )
 }
 \arguments{
@@ -53,11 +54,16 @@ Partial ROC test. See \code{\link[tenm]{pROC}}.}
 Default is \code{TRUE}.}
 
 \item{n_cores}{Number of cores to use for parallelization. Default is 4.}
+
+\item{E_percent}{Numeric value from 0 to 100 used as the threshold (E)
+for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.}
 }
 \value{
 An object of class "sp.temporal.selection" containing metadata of
 model statistics of the calibrated models, obtainable from the "mods_table"
-attribute. The function internally uses
+attribute. The "mve" and "ellipsoid_level" elements store the settings used
+to fit the models; \code{predict()} uses them by default. The function
+internally uses
 \code{\link[tenm]{ellipsoid_selection}}
 to obtain model statistics. Note that this function inherits attributes
 from classes "sp.temporal.modeling"

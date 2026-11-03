@@ -12,7 +12,11 @@ ellipsoid_omr(
   mve = TRUE,
   proc = FALSE,
   proc_iter = 100,
-  rseed = TRUE
+  rseed = TRUE,
+  E_percent = 5,
+  boost_percent = 50,
+  sub_sample = TRUE,
+  sub_sample_size = 1000
 )
 }
 \arguments{
@@ -41,6 +45,20 @@ bootstrap.}
 
 \item{rseed}{Logical. If \code{TRUE}, sets a random seed for the partial
 ROC bootstrap. Default is \code{TRUE}.}
+
+\item{E_percent}{Numeric value from 0 to 100 used as the threshold (E)
+for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.}
+
+\item{boost_percent}{Numeric value from 0 to 100 representing the
+percentage of testing data used in each partial ROC bootstrap iteration.
+Default is 50. See \code{\link[tenm]{pROC}}.}
+
+\item{sub_sample}{Logical. Whether to use a subsample of the background
+suitability values for the partial ROC test. Default is \code{TRUE}.
+See \code{\link[tenm]{pROC}}.}
+
+\item{sub_sample_size}{Size of the subsample used when \code{sub_sample}
+is \code{TRUE}. Default is 1000. See \code{\link[tenm]{pROC}}.}
 }
 \value{
 A data.frame with the following columns:
@@ -51,12 +69,18 @@ A data.frame with the following columns:
 \item "non_pred_train_ids": Row IDs of non-predicted training data.
 \item "om_rate_test"': Omission rate of the testing data.
 \item "non_pred_test_ids": Row IDs of non-predicted testing data.
-\item "bg_prevalence": Approximated prevalence of the model (see details).
+\item "bg_prevalence": Approximated prevalence of the model: the proportion
+of \code{env_bg} points inside the ellipsoid. It is also the null
+probability of the binomial test.
 \item "pval_bin": p-value of the binomial test.
 \item "pval_proc": p-value of the partial ROC test.
 \item "env_bg_paucratio": Environmental partial AUC ratio value.
 \item "env_bg_auc": Environmental AUC value.
 }
+
+If the ellipsoid cannot be fitted (for example, the covariance matrix is
+singular), a one-row data.frame with "fitted_vars", "nvars",
+"status" (\code{"fit_failed"}) and "fit_error" (the error message).
 }
 \description{
 Computes omission rate and statistical metrics for ellipsoid models using

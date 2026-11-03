@@ -33,6 +33,10 @@
 #' Default is \code{TRUE}.
 #' @param comp_each Number of models to run in each job in parallel computation.
 #'  Default is 100.
+#' @param E_percent,boost_percent,sub_sample,sub_sample_size Settings of the
+#' partial ROC test, passed to \code{\link[tenm]{pROC}} through
+#' \code{\link[tenm]{ellipsoid_omr}}. Defaults are 5, 50, \code{TRUE} and
+#' 1000.
 #' @return A data.frame with the following columns:
 #'   - "fitted_vars": Names of variables that were fitted.
 #'   - "nvars": Number of fitted variables
@@ -48,12 +52,20 @@
 #'   - "mean_omr_train_test": Mean value of omission rates (train and test).
 #'   - "rank_by_omr_train_test": Rank value of importance in model selection
 #'     by omission rate.
-#'   - "rank_omr_aucratio": Rank value by AUC ratio.
+#'   - "rank_omr_aucratio": Rank value by AUC ratio (when \code{proc} is
+#'     \code{TRUE}).
+#'   - "status": "ok", or "fit_failed" for models whose ellipsoid could not
+#'     be fitted (e.g. singular covariance matrix). Failed models are listed
+#'     after the ranked models, with \code{NA} metrics and ranks.
+#'   - "fit_error": The error message for "fit_failed" models, otherwise
+#'     \code{NA}.
 #' @details
 #' Model selection occurs in environmental space (E-space). For each variable
 #' combination specified in nvarstest, the omission rate (omr) in E-space is
 #' computed using \code{\link[tenm]{inEllipsoid}} function.
-#' Results are ordered by omr of the testing data. If env_bg is provided,
+#' Results are ordered by omr of the testing data. A model with no testing
+#' records has an \code{NA} testing omission rate and is ranked after the
+#' models with testing data. If env_bg is provided,
 #' an estimated prevalence is computed and results are additionally ordered
 #' by partial AUC. Model selection can be run in parallel.
 #' For more details and examples go to \code{\link[tenm]{ellipsoid_omr}} help.
@@ -112,7 +124,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                 parallel=FALSE,
                                 ncores=NULL,
                                 comp_each=100,proc=FALSE,
-                                proc_iter=100,rseed=TRUE){
+                                proc_iter=100,rseed=TRUE,
+                                E_percent=5,boost_percent=50,
+                                sub_sample=TRUE,sub_sample_size=1000){
   n_vars <- length(env_vars)
   ntest <- sapply(nvarstest, function(x) choose(n_vars,x))
   nmodels <- sum(ntest)
@@ -202,11 +216,15 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                     mve = mve,
                                     proc = proc,
                                     proc_iter = proc_iter,
-                                    rseed=rseed)
+                                    rseed=rseed,
+                                    E_percent = E_percent,
+                                    boost_percent = boost_percent,
+                                    sub_sample = sub_sample,
+                                    sub_sample_size = sub_sample_size)
 
           return(r1)
         })
-        results_df <- do.call("rbind.data.frame",results_L)
+        results_df <- dplyr::bind_rows(results_L)
         cat("Finishing calibration of models ",kkk[x],"to ",kkk[x + 1] - 1,
             "\n\n")
         return(results_df)
@@ -219,7 +237,7 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     cat("-------------------------------------------------------------------\n")
 
 
-    rfinal <- do.call("rbind.data.frame", mres )
+    rfinal <- dplyr::bind_rows(mres)
 
     future::plan(sequential)
   }
@@ -239,23 +257,38 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                    cf_level = level,
                                    mve = mve,
                                    proc = proc,
-                                   proc_iter = proc_iter,rseed=rseed)
+                                   proc_iter = proc_iter,rseed=rseed,
+                                   E_percent = E_percent,
+                                   boost_percent = boost_percent,
+                                   sub_sample = sub_sample,
+                                   sub_sample_size = sub_sample_size)
         return(r1)
       })
-      results_df <- do.call("rbind.data.frame",results_L)
+      results_df <- dplyr::bind_rows(results_L)
       return(results_df)
     })
-    rfinal <- do.call("rbind.data.frame",results_L)
+    rfinal <- dplyr::bind_rows(results_L)
   }
+  # Models whose ellipsoid could not be fitted are kept as "fit_failed"
+  # rows and appended after the ranked models.
+  failed <- if ("status" %in% names(rfinal)) {
+    rfinal$status %in% "fit_failed"
+  } else {
+    rep(FALSE, nrow(rfinal))
+  }
+  r_failed <- rfinal[failed, , drop = FALSE]
+  rfinal <- rfinal[!failed, setdiff(names(rfinal), c("status", "fit_error")),
+                   drop = FALSE]
   bg_omr <- c("bg_prevalence","om_rate_test") %in% names(rfinal)
   bg_omr_in <- all(bg_omr)
   if( bg_omr_in){
-    rfinal[["om_rate_test"]] <- ifelse(is.na(rfinal[["om_rate_test"]]),0,
-                                       rfinal[["om_rate_test"]])
+    # A missing test omission rate (no test records) stays NA, so the
+    # model is ranked after models with test data.
+    rfinal[["om_rate_test"]][is.na(rfinal[["om_rate_test"]])] <- NA
     rfinal[["om_rate_train"]] <- ifelse(is.na(rfinal[["om_rate_train"]]),0,
                                        rfinal[["om_rate_train"]])
     mean_omr <- rowMeans(rfinal[,c("om_rate_train",
-                                   "om_rate_test")],na.rm = TRUE)
+                                   "om_rate_test")])
     #mean_omr <- ifelse(is.na(mean_omr),0,mean_omr)
     rfinal$mean_omr_train_test <- mean_omr
     rfinal <- rfinal[order(rfinal$mean_omr_train_tes,
@@ -280,19 +313,18 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     if(length(met_criteriaID_both) > 0L){
       cat("\t",length(met_criteriaID_both),
           "models passed omr_criteria for train and test data\n")
+      best_r <- rfinal[met_criteriaID_both,]
+      if(proc){
+        best_r <- best_r[order(best_r$env_bg_paucratio,
+                               decreasing = TRUE),]
+      }
+
+      rfinal <- rbind(best_r,
+                      rfinal[-met_criteriaID_both,])
     }
     else{
       cat("\tNo model passed the omission criteria ranking by mean omission rates\n")
-      return(rfinal)
     }
-    best_r <- rfinal[met_criteriaID_both,]
-    if(proc){
-      best_r <- best_r[order(best_r$env_bg_paucratio,
-                             decreasing = TRUE),]
-    }
-
-    rfinal <- rbind(best_r,
-                    rfinal[-met_criteriaID_both,])
     if(proc){
       rfinal <- data.frame(rfinal,
                            rank_omr_aucratio=1:nrow(rfinal))
@@ -301,6 +333,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
   else
     rfinal <- rfinal[order(rfinal$om_rate_train,
                            decreasing = FALSE),]
+  rfinal$status <- rep("ok", nrow(rfinal))
+  rfinal$fit_error <- rep(NA_character_, nrow(rfinal))
+  rfinal <- dplyr::bind_rows(rfinal, r_failed)
   rownames(rfinal) <- NULL
   return(rfinal)
 }

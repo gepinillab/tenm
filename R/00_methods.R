@@ -9,13 +9,21 @@
 #' @param layers A SpatRaster object or a list where each element is a
 #' SpatRaster.
 #' @param layers_path Path to the directory containing raster layers.
-#' @param layers_ext File extension of the raster layers.
+#' @param layers_ext File extension of the raster layers. If \code{NULL}
+#' (the default), the \code{layers_ext} stored in \code{object} is used.
 #' @param mve Logical indicating whether to use the minimum volume
-#' ellipsoid algorithm.
+#' ellipsoid algorithm. If not supplied, the \code{mve} setting stored in
+#' \code{object} by \code{\link[tenm]{tenm_selection}} is used (\code{TRUE}
+#' for objects that do not store it).
 #' @param level Proportion of data to include inside the ellipsoid
-#' if mve is \code{TRUE}.
+#' if mve is \code{TRUE}. If not supplied, the \code{ellipsoid_level} stored
+#' in \code{object} by \code{\link[tenm]{tenm_selection}} is used (0.975 for
+#' objects that do not store it).
 #' @param output Character indicating if the model outputs "suitability" values
 #'  or "mahalanobis" distances.
+#' @param plot Logical. If \code{TRUE}, plot the niche in environmental space
+#' for each projection (see \code{\link[tenm]{ellipsoid_projection}}).
+#' Default is \code{FALSE}.
 #' @param ... Additional parameters passed to
 #' \code{\link[tenm]{ellipsoid_projection}}.
 #' @return A SpatRaster object representing predicted suitability values or
@@ -113,12 +121,19 @@
 methods::setMethod('predict', signature(object="sp.temporal.selection"),
                    function(object, model_variables=NULL,layers = NULL,
                             layers_path=NULL,layers_ext=NULL,
-                            mve = TRUE, level=0.975,output = "suitability",...){
+                            mve = TRUE, level=0.975,output = "suitability",
+                            plot = FALSE,...){
 
                      out_check <- match.arg(output,
                                             choices = c("suitability",
                                                         "mahalanobis"))
 
+
+                     # Refit with the settings used in model selection
+                     if(missing(mve) && !is.null(object$mve)) mve <- object$mve
+                     if(missing(level) && !is.null(object$ellipsoid_level)){
+                       level <- object$ellipsoid_level
+                     }
 
                      mod_table <- object$mods_table
                      model_vars <- stringr::str_split(mod_table$fitted_vars,",")
@@ -130,7 +145,8 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                        mod_vars <- model_variables
                        idvars <- which(!mod_vars %in% names(object$env_bg))
                        if(length(idvars)>0L){
-                         stop(paste("Not valid variable names:",model_vars[idvars],
+                         stop(paste("Not valid variable names:",
+                                     paste(mod_vars[idvars], collapse = ", "),
                                      "please provide valid variable names"))
                        }
                      }
@@ -149,7 +165,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                              centroid = mod$centroid,
                                                              covar = mod$covariance,
                                                              level = 0.9999,
-                                                             plot = TRUE,size = 2,
+                                                             plot = plot,size = 2,
                                                              output = output,
                                                              ...)
                        names(projmods) <- output
@@ -175,7 +191,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                                centroid = mod$centroid,
                                                                covar = mod$covariance,
                                                                level = 0.9999,
-                                                               plot = TRUE,
+                                                               plot = plot,
                                                                size = 2,
                                                                output = output,
                                                                ...)
@@ -187,6 +203,10 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                          })
                        names(projmods) <- paste0(output,"_",1:length(layers))
                      } else{
+                       if(is.null(layers_ext)) layers_ext <- object$layers_ext
+                       if(is.null(layers_ext)){
+                         stop("Please provide 'layers_ext'", call. = FALSE)
+                       }
                        pb <- utils::txtProgressBar(min = 0,max = length(layers_path),style = 3)
                        projmods <-    seq_along(layers_path) |> purrr::map(function(x){
                          lnames <- list.files(layers_path[x],pattern = layers_ext)
@@ -208,7 +228,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                                centroid = mod$centroid,
                                                                covar = mod$covariance,
                                                                level = 0.9999,
-                                                               plot = TRUE,
+                                                               plot = plot,
                                                                size = 2,
                                                                output = output,
                                                                ...)
