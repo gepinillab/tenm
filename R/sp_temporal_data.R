@@ -12,15 +12,15 @@
 #'   - lon_lat_vars: Names of the longitude and latitude columns.
 #'   - layers_ext: Final extension format of the environmental information
 #'     (e.g., ".tif").
-#' @param occs A data.frame with information about occurrence records of the
+#' @param occs A data.frame (or tibble) with information about occurrence records of the
 #' species being modeled.
 #' @param longitude Name of the variable in 'occs' containing longitude data.
 #' @param latitude Name of the variable in 'occs' containing latitude data.
 #' @param sp_date_var Name of the date variable.
 #' @param occ_date_format Format of dates in occurrence records.
-#' Options: "y", "ym", "ymd", "mdy", "my", "dmy".
+#' Options: "y", "ym", "ymd", "mdy", "my", "myd", "dmy".
 #' @param layers_date_format Format of dates in raster layers. Options:
-#' "y", "ym", "ymd", "mdy", "my", "dmy".
+#' "y", "ym", "ymd", "mdy", "my", "myd", "dmy".
 #' @param layers_by_date_dir Directory containing folders organized by date
 #' with raster layers of environmental information.
 #' @param layers_ext Extension or path of each raster layer archive
@@ -66,8 +66,9 @@ sp_temporal_data <- function(occs,longitude,
                              occ_date_format="y",
                              layers_date_format= "y",
                              layers_by_date_dir,layers_ext="*.tif$"){
-  classes_sp_data <- c("data.frame")
-  if(class(occs) %in% classes_sp_data){
+  if(inherits(occs, "data.frame")){
+    # tibbles and data.tables are used as plain data.frames
+    occs <- as.data.frame(occs)
 
     if(methods::is(occs, "data.frame")) {
       lon_lat_vars <- c(longitude,latitude)
@@ -83,7 +84,7 @@ sp_temporal_data <- function(occs,longitude,
         }) #|> do.call('c', .)
         return(r1)
       }
-      date_formats <- c("y","ym","ymd","my","myd","dmy")
+      date_formats <- c("y","ym","ymd","my","myd","dmy","mdy")
       if(!occ_date_format %in% date_formats)
         stop("occ_date_format should have one of these values ",
              paste(date_formats,collapse = " "))
@@ -99,6 +100,8 @@ sp_temporal_data <- function(occs,longitude,
         date_in_occs <- lubridate::myd(occs[,sp_date_var])
       } else if(occ_date_format == date_formats[6]){
         date_in_occs <- lubridate::dmy(occs[,sp_date_var])
+      } else if(occ_date_format == date_formats[7]){
+        date_in_occs <- lubridate::mdy(occs[,sp_date_var])
       }
 
       if(!dir.exists(layers_by_date_dir))
@@ -125,6 +128,8 @@ sp_temporal_data <- function(occs,longitude,
         layers_dates <- lubridate::myd(layers_names)
       } else if(layers_date_format == date_formats[6]){
         layers_dates <- lubridate::dmy(layers_names)
+      } else if(layers_date_format == date_formats[7]){
+        layers_dates <- lubridate::mdy(layers_names)
       }
 
       if(all(is.na(layers_dates)))

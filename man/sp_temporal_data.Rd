@@ -16,7 +16,7 @@ sp_temporal_data(
 )
 }
 \arguments{
-\item{occs}{A data.frame with information about occurrence records of the
+\item{occs}{A data.frame (or tibble) with information about occurrence records of the
 species being modeled.}
 
 \item{longitude}{Name of the variable in 'occs' containing longitude data.}
@@ -26,10 +26,10 @@ species being modeled.}
 \item{sp_date_var}{Name of the date variable.}
 
 \item{occ_date_format}{Format of dates in occurrence records.
-Options: "y", "ym", "ymd", "mdy", "my", "dmy".}
+Options: "y", "ym", "ymd", "mdy", "my", "myd", "dmy".}
 
 \item{layers_date_format}{Format of dates in raster layers. Options:
-"y", "ym", "ymd", "mdy", "my", "dmy".}
+"y", "ym", "ymd", "mdy", "my", "myd", "dmy".}
 
 \item{layers_by_date_dir}{Directory containing folders organized by date
 with raster layers of environmental information.}

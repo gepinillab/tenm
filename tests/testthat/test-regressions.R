@@ -631,3 +631,20 @@ testthat::test_that("#8: clean_dup_by_date() works under a multisession plan", {
   testthat::expect_equal(nrow(b$temporal_df), 4)
   testthat::expect_named(b$temporal_df, names(st$temporal_df))
 })
+
+testthat::test_that("#17: sp_temporal_data() accepts tibbles and the mdy format", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  occ <- data.frame(lon = c(1.5, 5.5, 8.5), lat = c(1.5, 5.5, 8.5),
+                    year = c(2000, 2001, 2001),
+                    date = c("06-15-2000", "01-20-2001", "11-30-2001"))
+  df <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  tb <- tenm::sp_temporal_data(dplyr::as_tibble(occ), "lon", "lat", "year", "y", "y",
+                               lyr$root)
+  testthat::expect_equal(tb$temporal_df, df$temporal_df)
+  md <- suppressMessages(
+    tenm::sp_temporal_data(occ, "lon", "lat", "date", "mdy", "y", lyr$root))
+  testthat::expect_equal(basename(md$temporal_df$layers_path), c("2000", "2001", "2001"))
+  testthat::expect_error(
+    tenm::sp_temporal_data(as.matrix(occ), "lon", "lat", "year", "y", "y", lyr$root),
+    "data.frame")
+})
