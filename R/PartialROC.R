@@ -18,7 +18,10 @@
 #' @param n_iter Number of bootstrap iterations to perform for partial ROC
 #' calculations. Default is 1000.
 #' @param rseed Logical. Whether or not to set a random seed for
-#' reproducibility. Default is \code{FALSE}.
+#' reproducibility. If \code{TRUE}, bootstrap iteration \code{i} uses
+#' \code{set.seed(i)} and the caller's random number generator state is
+#' restored on exit. If \code{FALSE}, the bootstrap draws from the current
+#' random number stream. Default is \code{FALSE}.
 #' @param sub_sample Logical. Indicates whether to use a subsample of
 #'  the test data. Recommended for large datasets.
 #' @param sub_sample_size Size of the subsample to use for computing pROC
@@ -59,6 +62,20 @@ pROC <- function(continuous_mod,test_data,
                  boost_percent=50,
                  rseed=FALSE,
                  sub_sample=TRUE,sub_sample_size=1000){
+  if (isTRUE(rseed)) {
+    # Bootstrap iterations are seeded for reproducibility; restore the
+    # caller's RNG state on exit so pROC() does not change it.
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", old_seed, envir = globalenv()),
+              add = TRUE)
+    } else {
+      on.exit(if (exists(".Random.seed", envir = globalenv(),
+                         inherits = FALSE)) {
+        rm(".Random.seed", envir = globalenv())
+      }, add = TRUE)
+    }
+  }
   if (methods::is(continuous_mod,"SpatRaster")) {
     ck1 <- paste0("continuous_mod@",names(attributes(continuous_mod))[1])
     ck2 <- paste0(ck1,"@.xData$")
@@ -190,7 +207,8 @@ pROC <- function(continuous_mod,test_data,
                          test_value,
                          n_data,
                          n_samp,
-                         error_sens,rseed = i)
+                         error_sens,
+                         rseed = if (isTRUE(rseed)) i else NULL)
     })
 
   mauc <-  mean(partial_AUC$auc_model, na.rm = TRUE)

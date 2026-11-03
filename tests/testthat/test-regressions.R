@@ -235,3 +235,26 @@ testthat::test_that("#12: buffer_distance and cells2samp() handle single and rep
                        raster_mask = mask, n_bg = 1, progress = FALSE), 2)
   }
 })
+
+testthat::test_that("#13: pROC() honours rseed and keeps the caller's RNG state", {
+  set.seed(1)
+  bgv <- runif(5000)
+  tv <- runif(30, .3, 1)
+  # rseed = FALSE: the caller's stream continues (it is not reset)
+  set.seed(111)
+  r111 <- tenm::pROC(bgv, tv, n_iter = 20, rseed = FALSE, sub_sample = FALSE)
+  a <- runif(1)
+  set.seed(999)
+  r999 <- tenm::pROC(bgv, tv, n_iter = 20, rseed = FALSE, sub_sample = FALSE)
+  b <- runif(1)
+  testthat::expect_false(identical(a, b))
+  testthat::expect_false(identical(r111$pROC_results, r999$pROC_results))
+  # rseed = TRUE: reproducible, and .Random.seed is left unchanged
+  set.seed(222)
+  before <- .Random.seed
+  t1 <- tenm::pROC(bgv, tv, n_iter = 20, rseed = TRUE)
+  testthat::expect_identical(.Random.seed, before)
+  set.seed(222)
+  t2 <- tenm::pROC(bgv, tv, n_iter = 20, rseed = TRUE)
+  testthat::expect_identical(t1$pROC_results, t2$pROC_results)
+})
