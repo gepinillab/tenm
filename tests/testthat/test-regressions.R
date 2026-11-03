@@ -167,3 +167,25 @@ testthat::test_that("#6: ex_by_date() assigns train/test labels within each date
     testthat::expect_equal(as.vector(table(factor(folder, folders))), n_occ)
   }
 })
+
+testthat::test_that("#7: ex_by_date() rejects layers that do not share one grid", {
+  future::plan("sequential")
+  occs <- data.frame(lon = c(10.5, 15.5, 20.5, 12.5),
+                     lat = c(10.5, 15.5, 20.5, 22.5),
+                     date = c("1939", "1939", "1940", "1940"))
+  make_st <- function(lay) {
+    tenm::sp_temporal_data(occs = occs, longitude = "lon", latitude = "lat",
+                           sp_date_var = "date", occ_date_format = "y",
+                           layers_date_format = "y",
+                           layers_by_date_dir = lay$root,
+                           layers_ext = "*.tif$")
+  }
+  # 1940 layers cropped by 3 columns: same CRS and resolution, other extent
+  cropped <- make_year_layers(c("1939", "1940"), crop_folder = "1940")
+  testthat::expect_error(tenm::ex_by_date(make_st(cropped), train_prop = 0.7),
+                         "same extent, resolution and CRS")
+  # Matching grids still work
+  same <- make_year_layers(c("1939", "1940"))
+  testthat::expect_s3_class(tenm::ex_by_date(make_st(same), train_prop = 0.7),
+                            "sp.temporal.env")
+})

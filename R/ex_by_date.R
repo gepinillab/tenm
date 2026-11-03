@@ -58,6 +58,20 @@ ex_by_date <- function(this_species,train_prop=0.7){
                              full.names = T,recursive = T) |>
     normalizePath(winslash = "/")
 
+  # cell_ids_year is computed on one layer and reused for every date by
+  # bg_by_date(), so all layers must share one grid (extent, rows/columns
+  # and CRS).
+  geom_ref <- terra::rast(capasDatePath[1])
+  same_geom <- vapply(capasDatePath[-1], function(x){
+    isTRUE(tryCatch(terra::compareGeom(geom_ref, terra::rast(x)),
+                    error = function(e) FALSE))
+  }, logical(1))
+  if(!all(same_geom)){
+    stop("All environmental layers must share the same extent, resolution ",
+         "and CRS. These layers differ from '", capasDatePath[1], "':\n  ",
+         paste(utils::head(capasDatePath[-1][!same_geom], 10),
+               collapse = "\n  "), call. = FALSE)
+  }
 
   unicos <-  paste0("/",unique(base::basename(capasDatePath)),
                     collapse = "|")
