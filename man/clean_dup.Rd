@@ -63,6 +63,11 @@ This function cleans up duplicated occurrences based on the specified
 distance threshold. If \code{by_mask} is \code{T}, the distance is interpreted as
 pixel distance using the provided raster_mask; otherwise, it is interpreted
 as geographic distance.
+
+Distance thinning is greedy: records are visited from the last row to the
+first, and a record is kept unless it lies within \code{threshold} of a record
+that has already been kept. No two kept records are closer than
+\code{threshold}, and every removed record is within \code{threshold} of a kept one.
 }
 \examples{
 data(abronia)

@@ -31,6 +31,11 @@
 #' distance threshold. If `by_mask` is \code{T}, the distance is interpreted as
 #' pixel distance using the provided raster_mask; otherwise, it is interpreted
 #' as geographic distance.
+#'
+#' Distance thinning is greedy: records are visited from the last row to the
+#' first, and a record is kept unless it lies within `threshold` of a record
+#' that has already been kept. No two kept records are closer than
+#' `threshold`, and every removed record is within `threshold` of a kept one.
 #' @examples
 #' data(abronia)
 #' tempora_layers_dir <- system.file("extdata/bio",package = "tenm")
@@ -148,18 +153,18 @@ clean_dup <- function(data,longitude,latitude,threshold=0.0, by_mask = FALSE,
   else{
     dat_sp <- sf::st_as_sf(data,coords=c(longitude,latitude))
     dat_bf <- sf::st_buffer(dat_sp, dist = threshold[1])
-    dup_mat <- sf::st_intersects(dat_sp,dat_bf,sparse = FALSE)
-    #dup_mat <- sf::st_is_within_distance(dat_sp,dist = threshold[1],
-    #                                     sparse = FALSE)
-    diag(dup_mat) <- FALSE
-    dup_mat[upper.tri(dup_mat)] <- FALSE
-    ids_dups <- which(dup_mat,arr.ind=TRUE)
-    ids_dupsL <- split(ids_dups[,2],ids_dups[,1],drop = FALSE)
-    ids_dups <- unique(unlist(ids_dupsL))
-    no_dups <- seq_len(nrow(data))
-    if(length(ids_dups)>0L){
-      no_dups <- no_dups[-ids_dups]
+    # nbrs[[i]]: records whose threshold buffer contains record i
+    nbrs <- sf::st_intersects(dat_sp,dat_bf)
+    # Greedy thinning from the last record to the first: a record is kept
+    # unless it is within the threshold of a record that is already kept.
+    keep <- rep(TRUE, nrow(data))
+    for(i in rev(seq_len(nrow(data)))){
+      if(keep[i]){
+        nb <- nbrs[[i]]
+        keep[nb[nb < i]] <- FALSE
+      }
     }
+    no_dups <- which(keep)
     return(data[no_dups,])
   }
 }

@@ -500,3 +500,20 @@ testthat::test_that("#9: clean_dup() stops when by_mask = TRUE and raster_mask i
     nrow(tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = mask,
                          progress = FALSE)), 2)
 })
+
+testthat::test_that("#10: distance thinning keeps records whose only neighbours were removed", {
+  chain <- data.frame(id = 1:3, x = c(0, 0.6, 1.2), y = 0)
+  testthat::expect_equal(tenm::clean_dup(chain, "x", "y", threshold = 1)$id, c(1L, 3L))
+  # A pair still keeps the later record, as before
+  pair <- data.frame(id = 1:2, x = c(0, 0.5), y = 0)
+  testthat::expect_equal(tenm::clean_dup(pair, "x", "y", threshold = 1)$id, 2L)
+  # No two kept records are within the threshold; every dropped one is near a kept one
+  set.seed(10)
+  pts <- data.frame(id = 1:60, x = runif(60, 0, 5), y = runif(60, 0, 5))
+  kept <- tenm::clean_dup(pts, "x", "y", threshold = 0.5)$id
+  d <- as.matrix(stats::dist(pts[, c("x", "y")]))
+  dk <- d[kept, kept]
+  testthat::expect_true(all(dk[upper.tri(dk)] >= 0.5))
+  dropped <- setdiff(pts$id, kept)
+  testthat::expect_true(all(vapply(dropped, function(i) any(d[i, kept] < 0.5), logical(1))))
+})
