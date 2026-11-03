@@ -3,8 +3,8 @@
 on:
   push:
     branches: [main, master]
+  # Run on pull requests to any branch (stacked PRs target other branches)
   pull_request:
-    branches: [main, master]
   release:
     types: [published]
   workflow_dispatch:
