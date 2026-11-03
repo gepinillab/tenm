@@ -12,7 +12,8 @@
 #' @param level Proportion of data to be used for computing the ellipsoid,
 #'   applicable when mve is \code{TRUE}.
 #' @param vars Vector specifying column indexes or names of variables in
-#' the input data used to fit the ellipsoid model.
+#' the input data used to fit the ellipsoid model. If \code{NULL} (default),
+#' all columns are used.
 #' @return A list containing the following components:
 #'   - `centroid`: Centroid (mean vector) of the ellipsoid.
 #'   - `covariance_matrix`: Covariance matrix based on the input data.
@@ -50,7 +51,15 @@
 cov_center <- function (data, mve = TRUE, level, vars = NULL)
 {
 
-  data <- data[, vars]
+  if (!is.null(vars)) data <- data[, vars, drop = FALSE]
+  if (!all(vapply(as.data.frame(data), is.numeric, logical(1))))
+    stop("All variables in 'data' must be numeric", call. = FALSE)
+  if (anyNA(data))
+    stop("'data' has missing values; remove them before fitting the ellipsoid",
+         call. = FALSE)
+  if (nrow(data) <= ncol(data))
+    stop("'data' needs more records (", nrow(data), ") than variables (",
+         ncol(data), ") to fit an ellipsoid", call. = FALSE)
   if (mve) {
 
     NDquntil <- function(nD, level) {
@@ -77,7 +86,11 @@ cov_center <- function (data, mve = TRUE, level, vars = NULL)
     return(term4)
   }
 
-  sigmaI <- solve(vari)/stats::qchisq(level, df = dim(data)[2])
+  vari_inv <- tryCatch(solve(vari), error = function(e) {
+    stop("The covariance matrix is singular (variables may be collinear or ",
+         "constant): ", conditionMessage(e), call. = FALSE)
+  })
+  sigmaI <- vari_inv/stats::qchisq(level, df = dim(data)[2])
   sigIEigenSys <- eigen(sigmaI)
   sigIEval <- sigIEigenSys$values
   sigIEvec <- sigIEigenSys$vectors

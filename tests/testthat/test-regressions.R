@@ -665,3 +665,21 @@ testthat::test_that("#18: ex_by_date() keeps exact duplicate records as numeric 
   testthat::expect_equal(ex$temporal_df$bio_01, 10000 + cells)
   testthat::expect_true(all(c("bio_01", "bio_12") %in% names(ex$env_data)))
 })
+
+testthat::test_that("#19: cov_center() uses all columns by default and explains bad input", {
+  set.seed(19)
+  d <- data.frame(a = rnorm(40), b = rnorm(40), c = rnorm(40))
+  set.seed(1)
+  m0 <- tenm::cov_center(d, mve = TRUE, level = 0.975)
+  set.seed(1)
+  m1 <- tenm::cov_center(d, mve = TRUE, level = 0.975, vars = names(d))
+  testthat::expect_equal(m0, m1)
+  testthat::expect_length(tenm::cov_center(d, mve = FALSE, level = 0.975, vars = "a")$centroid, 1)
+  testthat::expect_error(
+    tenm::cov_center(data.frame(a = d$a, b = 2 * d$a), mve = FALSE, level = 0.975),
+    "singular")
+  d$a[3] <- NA
+  testthat::expect_error(tenm::cov_center(d, mve = FALSE, level = 0.975), "missing values")
+  testthat::expect_error(tenm::cov_center(d[1:2, ], mve = FALSE, level = 0.975),
+                         "more records")
+})

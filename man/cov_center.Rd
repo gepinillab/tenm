@@ -18,7 +18,8 @@ the \code{\link[MASS]{cov.mve}} function from the MASS package. If
 applicable when mve is \code{TRUE}.}
 
 \item{vars}{Vector specifying column indexes or names of variables in
-the input data used to fit the ellipsoid model.}
+the input data used to fit the ellipsoid model. If \code{NULL} (default),
+all columns are used.}
 }
 \value{
 A list containing the following components:
