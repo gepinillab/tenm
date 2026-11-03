@@ -339,3 +339,22 @@ testthat::test_that("#16: predict() accepts plot = FALSE, names bad variables an
             layers_path = dir70, layers_ext = ".tif$"),
     "Not valid variable names: bio_99")
 })
+
+testthat::test_that("#20: non_pred_test_ids is NA when no test point is omitted", {
+  set.seed(20)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150))
+  env_test <- data.frame(bio_01 = c(20, 20.5, 19.5, 21, 19),
+                         bio_12 = c(1000, 990, 1010, 1020, 980))
+  env_bg <- data.frame(bio_01 = runif(2000, 5, 40),
+                       bio_12 = runif(2000, 200, 2500))
+  r_in <- tenm::ellipsoid_omr(env_train, env_test, env_bg, cf_level = 0.975,
+                              mve = FALSE)
+  testthat::expect_equal(r_in$om_rate_test, 0)
+  testthat::expect_true(is.na(r_in$non_pred_test_ids))
+  r_out <- tenm::ellipsoid_omr(env_train,
+                               rbind(env_test, data.frame(bio_01 = 60,
+                                                          bio_12 = 5000)),
+                               env_bg, cf_level = 0.975, mve = FALSE)
+  testthat::expect_equal(as.character(r_out$non_pred_test_ids), "6")
+})

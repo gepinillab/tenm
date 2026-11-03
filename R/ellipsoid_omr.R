@@ -134,7 +134,7 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
 
     fails_test_ids <- which(in_etest$in_Ellipsoid== 0)
 
-    if(length(fails_train_ids)>0){
+    if(length(fails_test_ids)>0){
       fails_test_ids <- paste0(fails_test_ids,collapse = ",")
     } else {
       fails_test_ids <- NA
