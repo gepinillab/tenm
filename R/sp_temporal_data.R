@@ -162,11 +162,16 @@ sp_temporal_data <- function(occs,longitude,
                 n_occ - n_exact, " were matched to the nearest layer date ",
                 "(largest gap: ", max(date_gap), " days)")
       }
+      # A folder named by year (or month) covers that whole year (or month)
       rng <- range(layers_dates, na.rm = TRUE)
-      outside <- date_sps < rng[1] | date_sps > rng[2]
+      last_end <- switch(layers_date_format,
+                         y = rng[2] + lubridate::years(1),
+                         ym = , my = rng[2] + months(1),
+                         rng[2] + 1) - 1
+      outside <- date_sps < rng[1] | date_sps > last_end
       if(any(outside))
         warning(sum(outside), " record(s) are outside the range of layer dates (",
-                rng[1], " to ", rng[2], ") and were matched to the first or ",
+                rng[1], " to ", last_end, ") and were matched to the first or ",
                 "last layer date", call. = FALSE)
 
       layers_all <- list.dirs(path = layers_by_date_dir,recursive = FALSE,

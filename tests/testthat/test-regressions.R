@@ -553,6 +553,12 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
   # Exact matches only: no message or warning
   testthat::expect_silent(
     tenm::sp_temporal_data(occ[c(2, 5), ], "lon", "lat", "year", "y", "y", lyr$root))
+  # A date inside the last folder's year is not outside the range
+  occ_d <- data.frame(lon = 5.5, lat = 5.5, date = c("2016-11-30", "2017-02-01"))
+  testthat::expect_warning(
+    suppressMessages(tenm::sp_temporal_data(occ_d, "lon", "lat", "date", "ymd", "y",
+                                            lyr$root)),
+    "^1 record\\(s\\) are outside the range of layer dates \\(1939-01-01 to 2016-12-31\\)")
   testthat::expect_error(
     suppressWarnings(tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "dmy",
                                             lyr$root)), "layers_date_format")
