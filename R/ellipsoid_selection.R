@@ -199,8 +199,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                     env_test = env_test0,
                                     env_bg = env_bg0,
                                     cf_level = level,
+                                    mve = mve,
                                     proc = proc,
-                                    proc_iter,
+                                    proc_iter = proc_iter,
                                     rseed=rseed)
 
           return(r1)
@@ -236,8 +237,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                    env_test = env_test,
                                    env_bg = env_bg,
                                    cf_level = level,
+                                   mve = mve,
                                    proc = proc,
-                                   proc_iter,rseed=rseed)
+                                   proc_iter = proc_iter,rseed=rseed)
         return(r1)
       })
       results_df <- do.call("rbind.data.frame",results_L)
