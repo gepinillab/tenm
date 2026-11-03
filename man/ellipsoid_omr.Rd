@@ -12,7 +12,11 @@ ellipsoid_omr(
   mve = TRUE,
   proc = FALSE,
   proc_iter = 100,
-  rseed = TRUE
+  rseed = TRUE,
+  E_percent = 5,
+  boost_percent = 50,
+  sub_sample = TRUE,
+  sub_sample_size = 1000
 )
 }
 \arguments{
@@ -41,6 +45,20 @@ bootstrap.}
 
 \item{rseed}{Logical. If \code{TRUE}, sets a random seed for the partial
 ROC bootstrap. Default is \code{TRUE}.}
+
+\item{E_percent}{Numeric value from 0 to 100 used as the threshold (E)
+for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.}
+
+\item{boost_percent}{Numeric value from 0 to 100 representing the
+percentage of testing data used in each partial ROC bootstrap iteration.
+Default is 50. See \code{\link[tenm]{pROC}}.}
+
+\item{sub_sample}{Logical. Whether to use a subsample of the background
+suitability values for the partial ROC test. Default is \code{TRUE}.
+See \code{\link[tenm]{pROC}}.}
+
+\item{sub_sample_size}{Size of the subsample used when \code{sub_sample}
+is \code{TRUE}. Default is 1000. See \code{\link[tenm]{pROC}}.}
 }
 \value{
 A data.frame with the following columns:

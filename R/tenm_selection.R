@@ -22,6 +22,8 @@
 #' @param parallel Logical. Whether to run computations in parallel.
 #' Default is \code{TRUE}.
 #' @param n_cores Number of cores to use for parallelization. Default is 4.
+#' @param E_percent Numeric value from 0 to 100 used as the threshold (E)
+#' for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.
 #' @return An object of class "sp.temporal.selection" containing metadata of
 #' model statistics of the calibrated models, obtainable from the "mods_table"
 #' attribute. The function internally uses
@@ -111,7 +113,8 @@ tenm_selection <- function(this_species,omr_criteria =0.1,
                            RandomPercent = 50,
                            NoOfIteration=1000,
                            parallel=TRUE,
-                           n_cores=4){
+                           n_cores=4,
+                           E_percent=5){
 
   stopifnot(inherits(this_species, "sp.temporal.bg"))
   enbg <- this_species$env_bg[,vars2fit]
@@ -131,7 +134,11 @@ tenm_selection <- function(this_species,omr_criteria =0.1,
                                               omr_criteria = omr_criteria,
                                               proc = proc,
                                               proc_iter = NoOfIteration,
-                                              rseed = TRUE)
+                                              rseed = TRUE,
+                                              E_percent = E_percent,
+                                              boost_percent = RandomPercent,
+                                              sub_sample = sub_sample,
+                                              sub_sample_size = sub_sample_size)
 
   sp.temp.data.env <- list(temporal_df = this_species$temporal_df,
                            sp_date_var = this_species$sp_date_var,

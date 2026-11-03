@@ -274,3 +274,35 @@ testthat::test_that("#14: ellipsoid_omr() ignores a global object called in_etes
   testthat::expect_equal(got, ref)
   testthat::expect_false("pval_bin" %in% names(got))
 })
+
+testthat::test_that("#15: tenm_selection() passes its pROC settings to pROC()", {
+  set.seed(15)
+  tdf <- data.frame(bio_01 = rnorm(80, 20, 3), bio_12 = rnorm(80, 1000, 150),
+                    trian_test = rep(c("Train", "Test"), c(60, 20)))
+  sp_bg <- list(temporal_df = tdf, layers_ext = ".tif$",
+                env_bg = data.frame(bio_01 = runif(3000, 5, 40),
+                                    bio_12 = runif(3000, 200, 2500)))
+  class(sp_bg) <- "sp.temporal.bg"
+  utils::capture.output(
+    sel <- tenm::tenm_selection(sp_bg, omr_criteria = 0.1,
+                                ellipsoid_level = 0.975,
+                                vars2fit = c("bio_01", "bio_12"),
+                                nvars_to_fit = 2, mve = FALSE, proc = TRUE,
+                                RandomPercent = 30, sub_sample = FALSE,
+                                sub_sample_size = 200, NoOfIteration = 9,
+                                E_percent = 10, parallel = FALSE))
+  train <- tdf[tdf$trian_test == "Train", 1:2]
+  test <- tdf[tdf$trian_test == "Test", 1:2]
+  direct <- tenm::ellipsoid_omr(train, test, sp_bg$env_bg, cf_level = 0.975,
+                                mve = FALSE, proc = TRUE, proc_iter = 9,
+                                rseed = TRUE, E_percent = 10,
+                                boost_percent = 30, sub_sample = FALSE,
+                                sub_sample_size = 200)
+  default <- tenm::ellipsoid_omr(train, test, sp_bg$env_bg, cf_level = 0.975,
+                                 mve = FALSE, proc = TRUE, proc_iter = 9,
+                                 rseed = TRUE, sub_sample = FALSE)
+  cols <- c("pval_proc", "env_bg_paucratio", "env_bg_auc")
+  testthat::expect_equal(unlist(sel$mods_table[1, cols]), unlist(direct[1, cols]))
+  testthat::expect_false(isTRUE(all.equal(unlist(direct[1, cols]),
+                                          unlist(default[1, cols]))))
+})

@@ -21,6 +21,16 @@
 #'   bootstrap.
 #' @param rseed Logical. If \code{TRUE}, sets a random seed for the partial
 #' ROC bootstrap. Default is \code{TRUE}.
+#' @param E_percent Numeric value from 0 to 100 used as the threshold (E)
+#' for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.
+#' @param boost_percent Numeric value from 0 to 100 representing the
+#' percentage of testing data used in each partial ROC bootstrap iteration.
+#' Default is 50. See \code{\link[tenm]{pROC}}.
+#' @param sub_sample Logical. Whether to use a subsample of the background
+#' suitability values for the partial ROC test. Default is \code{TRUE}.
+#' See \code{\link[tenm]{pROC}}.
+#' @param sub_sample_size Size of the subsample used when \code{sub_sample}
+#' is \code{TRUE}. Default is 1000. See \code{\link[tenm]{pROC}}.
 #' @return A data.frame with the following columns:
 #'   - "fitted_vars": Names of variables that were fitted.
 #'   - "nvars": Number of fitted variables
@@ -65,7 +75,9 @@
 #' @export
 
 ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
-                          proc=FALSE,proc_iter=100,rseed=TRUE){
+                          proc=FALSE,proc_iter=100,rseed=TRUE,
+                          E_percent=5,boost_percent=50,
+                          sub_sample=TRUE,sub_sample_size=1000){
   emd <- try(tenm::cov_center(data = env_data,
                                mve = mve,
                                level = cf_level,
@@ -195,7 +207,11 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                               pval_bin=p_bin)
       if(proc){
         proc <- try(tenm::pROC(suits_bg,test_data = suits_val,
-                            n_iter = proc_iter,rseed = rseed))
+                            n_iter = proc_iter,rseed = rseed,
+                            E_percent = E_percent,
+                            boost_percent = boost_percent,
+                            sub_sample = sub_sample,
+                            sub_sample_size = sub_sample_size))
         message1 <- attr(proc,"class")== "try-error"
         if(length(message1)>0L){
           pval_proc <- NA

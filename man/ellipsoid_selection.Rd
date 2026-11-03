@@ -18,7 +18,11 @@ ellipsoid_selection(
   comp_each = 100,
   proc = FALSE,
   proc_iter = 100,
-  rseed = TRUE
+  rseed = TRUE,
+  E_percent = 5,
+  boost_percent = 50,
+  sub_sample = TRUE,
+  sub_sample_size = 1000
 )
 }
 \arguments{
@@ -63,6 +67,11 @@ Default is 100.}
 
 \item{rseed}{Logical. If \code{TRUE}, set a random seed for partial ROC bootstrap.
 Default is \code{TRUE}.}
+
+\item{E_percent, boost_percent, sub_sample, sub_sample_size}{Settings of the
+partial ROC test, passed to \code{\link[tenm]{pROC}} through
+\code{\link[tenm]{ellipsoid_omr}}. Defaults are 5, 50, \code{TRUE} and
+1000.}
 }
 \value{
 A data.frame with the following columns:

@@ -33,6 +33,10 @@
 #' Default is \code{TRUE}.
 #' @param comp_each Number of models to run in each job in parallel computation.
 #'  Default is 100.
+#' @param E_percent,boost_percent,sub_sample,sub_sample_size Settings of the
+#' partial ROC test, passed to \code{\link[tenm]{pROC}} through
+#' \code{\link[tenm]{ellipsoid_omr}}. Defaults are 5, 50, \code{TRUE} and
+#' 1000.
 #' @return A data.frame with the following columns:
 #'   - "fitted_vars": Names of variables that were fitted.
 #'   - "nvars": Number of fitted variables
@@ -112,7 +116,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                 parallel=FALSE,
                                 ncores=NULL,
                                 comp_each=100,proc=FALSE,
-                                proc_iter=100,rseed=TRUE){
+                                proc_iter=100,rseed=TRUE,
+                                E_percent=5,boost_percent=50,
+                                sub_sample=TRUE,sub_sample_size=1000){
   n_vars <- length(env_vars)
   ntest <- sapply(nvarstest, function(x) choose(n_vars,x))
   nmodels <- sum(ntest)
@@ -202,7 +208,11 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                     mve = mve,
                                     proc = proc,
                                     proc_iter = proc_iter,
-                                    rseed=rseed)
+                                    rseed=rseed,
+                                    E_percent = E_percent,
+                                    boost_percent = boost_percent,
+                                    sub_sample = sub_sample,
+                                    sub_sample_size = sub_sample_size)
 
           return(r1)
         })
@@ -239,7 +249,11 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
                                    cf_level = level,
                                    mve = mve,
                                    proc = proc,
-                                   proc_iter = proc_iter,rseed=rseed)
+                                   proc_iter = proc_iter,rseed=rseed,
+                                   E_percent = E_percent,
+                                   boost_percent = boost_percent,
+                                   sub_sample = sub_sample,
+                                   sub_sample_size = sub_sample_size)
         return(r1)
       })
       results_df <- do.call("rbind.data.frame",results_L)
