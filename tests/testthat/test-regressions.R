@@ -258,3 +258,19 @@ testthat::test_that("#13: pROC() honours rseed and keeps the caller's RNG state"
   t2 <- tenm::pROC(bgv, tv, n_iter = 20, rseed = TRUE)
   testthat::expect_identical(t1$pROC_results, t2$pROC_results)
 })
+
+testthat::test_that("#14: ellipsoid_omr() ignores a global object called in_etest", {
+  set.seed(14)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 3),
+                          bio_12 = rnorm(60, 1000, 150))
+  env_bg <- data.frame(bio_01 = runif(2000, 5, 40),
+                       bio_12 = runif(2000, 200, 2500))
+  ref <- tenm::ellipsoid_omr(env_data = env_train, env_test = NULL,
+                             env_bg = env_bg, cf_level = 0.975, mve = FALSE)
+  assign("in_etest", "anything", envir = globalenv())
+  on.exit(rm("in_etest", envir = globalenv()), add = TRUE)
+  got <- tenm::ellipsoid_omr(env_data = env_train, env_test = NULL,
+                             env_bg = env_bg, cf_level = 0.975, mve = FALSE)
+  testthat::expect_equal(got, ref)
+  testthat::expect_false("pval_bin" %in% names(got))
+})

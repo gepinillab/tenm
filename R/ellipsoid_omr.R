@@ -113,7 +113,8 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
                           nvars=length(emd$centroid),
                           om_rate_train= omrate_train,
                           non_pred_train_ids = fails_train_ids)
-  if(is.data.frame(env_test) || is.matrix(env_test)){
+  has_test <- is.data.frame(env_test) || is.matrix(env_test)
+  if(has_test){
     in_etest <-  tenm::inEllipsoid(centroid = emd$centroid,
                                     eShape = emd$covariance,
                                     env_data = env_test,
@@ -179,7 +180,7 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
     d_results <-data.frame( d_results,
                             bg_prevalence= prevBG)
 
-    if(exists("in_etest")){
+    if(has_test){
       #bin_table <- table(c(in_ebg$in_Ellipsoid,
       #                     in_etest$in_Ellipsoid))
       #binBG <- bin_table[[2]]/(bin_table[[1]]+bin_table[[2]])
