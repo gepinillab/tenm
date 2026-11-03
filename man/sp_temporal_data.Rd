@@ -16,7 +16,7 @@ sp_temporal_data(
 )
 }
 \arguments{
-\item{occs}{A data.frame with information about occurrence records of the
+\item{occs}{A data.frame (or tibble) with information about occurrence records of the
 species being modeled.}
 
 \item{longitude}{Name of the variable in 'occs' containing longitude data.}
@@ -26,10 +26,10 @@ species being modeled.}
 \item{sp_date_var}{Name of the date variable.}
 
 \item{occ_date_format}{Format of dates in occurrence records.
-Options: "y", "ym", "ymd", "mdy", "my", "dmy".}
+Options: "y", "ym", "ymd", "mdy", "my", "myd", "dmy".}
 
 \item{layers_date_format}{Format of dates in raster layers. Options:
-"y", "ym", "ymd", "mdy", "my", "dmy".}
+"y", "ym", "ymd", "mdy", "my", "myd", "dmy".}
 
 \item{layers_by_date_dir}{Directory containing folders organized by date
 with raster layers of environmental information.}
@@ -65,6 +65,16 @@ The format of dates for each layer can be organized in a particular pattern,
 for example year/month/day ("ymd"), year/month ("ym"), just year ("y") or
 some other arrangement like month/year ("my"), month/year/day ("myd"),
 day/month/year ("dmy").
+
+Each record is matched to the folder with the nearest date. A message
+reports how many records have no folder of the same date, and a warning
+reports records outside the range of folder dates. Records whose date is
+missing or cannot be read are removed with a warning.
+
+The date folders used must all contain the same layer files. A warning is
+given when the layers have no CRS, or when records fall outside the extent
+of the layers (usually because the coordinates and the layers use
+different CRSs; occurrence coordinates are not reprojected).
 }
 \examples{
 library(tenm)

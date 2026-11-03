@@ -52,6 +52,8 @@ ex_by_date <- function(this_species,train_prop=0.7){
 
 
   tdf$cell_ids_year <- cell_ids_year
+  # Row id, so that exact duplicate records stay separate rows in pivot_wider()
+  tdf$.row <- seq_len(nrow(tdf))
 
   capasDatePath <- list.files(unique(tdf$layers_path),
                              pattern = this_species$layers_ext,
@@ -89,6 +91,7 @@ ex_by_date <- function(this_species,train_prop=0.7){
     layer_val <- terra::extract(env_layers,
                                 time_obs[,this_species$lon_lat_vars])
     df1 <- data.frame(time_obs[,c(1:6)],
+                      .row = time_obs$.row,
                       layer_val = layer_val[[2]],
                       var_name = snam)
     return(df1)
@@ -98,6 +101,7 @@ ex_by_date <- function(this_species,train_prop=0.7){
   years_env <- tidyr::pivot_wider(ex_time,
                                   names_from = "var_name",
                                   values_from = "layer_val")
+  years_env$.row <- NULL
   years_envL <- split(years_env,years_env$layer_dates)
 
   trian_test <- seq_along(years_envL) |> purrr::map(function(x){

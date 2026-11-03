@@ -485,3 +485,201 @@ testthat::test_that("#27: bg_prevalence is computed over the background only", {
                                            p = mean(in_bg),
                                            alternative = "greater")$p.value)
 })
+
+testthat::test_that("#9: clean_dup() stops when by_mask = TRUE and raster_mask is not a SpatRaster", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5), lat = c(1.5, 1.6, 5.5), id = 1:3)
+  testthat::expect_error(
+    tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = mask[1],
+                    progress = FALSE), "SpatRaster")
+  testthat::expect_error(
+    tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = NULL,
+                    progress = FALSE), "SpatRaster")
+  testthat::expect_equal(
+    nrow(tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE, raster_mask = mask,
+                         progress = FALSE)), 2)
+})
+
+testthat::test_that("#10: distance thinning keeps records whose only neighbours were removed", {
+  chain <- data.frame(id = 1:3, x = c(0, 0.6, 1.2), y = 0)
+  testthat::expect_equal(tenm::clean_dup(chain, "x", "y", threshold = 1)$id, c(1L, 3L))
+  # A pair still keeps the later record, as before
+  pair <- data.frame(id = 1:2, x = c(0, 0.5), y = 0)
+  testthat::expect_equal(tenm::clean_dup(pair, "x", "y", threshold = 1)$id, 2L)
+  # No two kept records are within the threshold; every dropped one is near a kept one
+  set.seed(10)
+  pts <- data.frame(id = 1:60, x = runif(60, 0, 5), y = runif(60, 0, 5))
+  kept <- tenm::clean_dup(pts, "x", "y", threshold = 0.5)$id
+  d <- as.matrix(stats::dist(pts[, c("x", "y")]))
+  dk <- d[kept, kept]
+  testthat::expect_true(all(dk[upper.tri(dk)] >= 0.5))
+  dropped <- setdiff(pts$id, kept)
+  testthat::expect_true(all(vapply(dropped, function(i) any(d[i, kept] < 0.5), logical(1))))
+})
+
+testthat::test_that("#11: clean_dup() drops records outside the mask with a warning", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  out <- data.frame(id = 1:4, lon = c(-120, -121, -122, 10.5),
+                    lat = c(40, 41, 42, 10.5))
+  for (k in 0:1) {
+    testthat::expect_warning(
+      res <- tenm::clean_dup(out, "lon", "lat", by_mask = TRUE,
+                             raster_mask = mask, n_ngbs = k, progress = FALSE),
+      "3 record\\(s\\) fall outside")
+    testthat::expect_equal(res$id, 4L)
+  }
+})
+
+testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and bad inputs", {
+  lyr <- make_year_layers(c("1939", "1941", "2016"))
+  occ <- data.frame(lon = 5.5, lat = 5.5, year = c(1945, 1939, 1890, 2050, 2016, NA))
+  msgs <- character()
+  st <- withCallingHandlers(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    },
+    warning = function(w) {
+      msgs <<- c(msgs, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    })
+  testthat::expect_equal(nrow(st$temporal_df), 5)
+  testthat::expect_true(any(grepl("2 of 5 records match a layer date exactly", msgs)))
+  testthat::expect_true(any(grepl("2 record\\(s\\) are outside the range", msgs)))
+  testthat::expect_true(any(grepl("1 record\\(s\\) with a missing date", msgs)))
+  # Exact matches only: no message or warning
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ[c(2, 5), ], "lon", "lat", "year", "y", "y", lyr$root))
+  # A date inside the last folder's year is not outside the range
+  occ_d <- data.frame(lon = 5.5, lat = 5.5, date = c("2016-11-30", "2017-02-01"))
+  testthat::expect_warning(
+    suppressMessages(tenm::sp_temporal_data(occ_d, "lon", "lat", "date", "ymd", "y",
+                                            lyr$root)),
+    "^1 record\\(s\\) are outside the range of layer dates \\(1939-01-01 to 2016-12-31\\)")
+  testthat::expect_error(
+    suppressWarnings(tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "dmy",
+                                            lyr$root)), "layers_date_format")
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y",
+                           file.path(lyr$root, "nope")), "does not exist")
+})
+
+testthat::test_that("#25: sp_temporal_data() checks layer sets, CRS and occurrence extent", {
+  occ <- data.frame(lon = c(2.5, 5.5, 7.5), lat = c(2.5, 5.5, 7.5),
+                    year = c(2000, 2001, 2001))
+  lyr <- make_year_layers(c("2000", "2001"))
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root))
+  # A folder without one of the variables
+  file.remove(file.path(lyr$root, "2001", "bio_12.tif"))
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    "2001: missing bio_12.tif")
+  # Occurrences outside the layers (lon/lat points, projected layers)
+  root <- tempfile("tenm_proj_")
+  for (f in c("2000", "2001")) {
+    dir.create(file.path(root, f), recursive = TRUE)
+    r <- terra::rast(nrows = 5, ncols = 5, xmin = 1e6, xmax = 2e6, ymin = 1e6,
+                     ymax = 2e6, crs = "EPSG:3857", vals = 1:25)
+    names(r) <- "bio_01"
+    terra::writeRaster(r, file.path(root, f, "bio_01.tif"))
+  }
+  testthat::expect_warning(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", root),
+    "3 of 3 record\\(s\\) fall outside")
+})
+
+testthat::test_that("#21: clean_dup() drops missing coordinates and keeps the input columns", {
+  lyr <- make_year_layers("2000")
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5, 9.5, 12.5), lat = c(1.5, 1.6, NA, 9.5, 12.5),
+                    year = 2000, id = 1:5)
+  testthat::expect_message(
+    a <- tenm::clean_dup(occ, "lon", "lat", threshold = 0.5),
+    "1 record\\(s\\) with a missing")
+  testthat::expect_equal(a$id, c(2L, 4L, 5L))
+  for (k in 0:1) {
+    b <- suppressMessages(tenm::clean_dup(occ, "lon", "lat", by_mask = TRUE,
+                                          raster_mask = mask, n_ngbs = k,
+                                          progress = FALSE))
+    testthat::expect_named(b, names(occ))
+    xy <- suppressMessages(tenm::clean_dup(occ[, c("lon", "lat")], "lon", "lat",
+                                           by_mask = TRUE, raster_mask = mask,
+                                           n_ngbs = k, progress = FALSE))
+    testthat::expect_equal(xy, b[, c("lon", "lat")])
+  }
+  testthat::expect_equal(b$id, c(1L, 4L, 5L))
+})
+
+testthat::test_that("#8: clean_dup_by_date() works under a multisession plan", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  occ <- data.frame(lon = c(1.5, 1.6, 5.5, 1.5, 1.6, 8.5),
+                    lat = c(1.5, 1.6, 5.5, 1.5, 1.6, 8.5),
+                    year = rep(c(2000, 2001), each = 3))
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  mask <- terra::rast(file.path(lyr$root, "2000", "bio_01.tif"))
+  th <- 0.5
+  old_plan <- future::plan("multisession", workers = 2)
+  on.exit(future::plan(old_plan), add = TRUE)
+  a <- tenm::clean_dup_by_date(st, threshold = th, progress = FALSE)
+  b <- tenm::clean_dup_by_date(st, threshold = 1, by_mask = TRUE,
+                               raster_mask = mask, progress = FALSE)
+  testthat::expect_equal(nrow(a$temporal_df), 4)
+  testthat::expect_equal(nrow(b$temporal_df), 4)
+  testthat::expect_named(b$temporal_df, names(st$temporal_df))
+})
+
+testthat::test_that("#17: sp_temporal_data() accepts tibbles and the mdy format", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  occ <- data.frame(lon = c(1.5, 5.5, 8.5), lat = c(1.5, 5.5, 8.5),
+                    year = c(2000, 2001, 2001),
+                    date = c("06-15-2000", "01-20-2001", "11-30-2001"))
+  df <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  tb <- tenm::sp_temporal_data(dplyr::as_tibble(occ), "lon", "lat", "year", "y", "y",
+                               lyr$root)
+  testthat::expect_equal(tb$temporal_df, df$temporal_df)
+  md <- suppressMessages(
+    tenm::sp_temporal_data(occ, "lon", "lat", "date", "mdy", "y", lyr$root))
+  testthat::expect_equal(basename(md$temporal_df$layers_path), c("2000", "2001", "2001"))
+  testthat::expect_error(
+    tenm::sp_temporal_data(as.matrix(occ), "lon", "lat", "year", "y", "y", lyr$root),
+    "data.frame")
+})
+
+testthat::test_that("#18: ex_by_date() keeps exact duplicate records as numeric rows", {
+  lyr <- make_year_layers("2014")
+  occ <- data.frame(lon = c(1.5, 1.5, 2.5, 3.5, 4.5), lat = c(1.5, 1.5, 2.5, 3.5, 4.5),
+                    year = 2014)
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root)
+  old_plan <- future::plan("sequential")
+  on.exit(future::plan(old_plan), add = TRUE)
+  set.seed(1)
+  testthat::expect_no_warning(ex <- suppressMessages(tenm::ex_by_date(st, 0.7)))
+  testthat::expect_type(ex$temporal_df$bio_01, "double")
+  testthat::expect_equal(nrow(ex$temporal_df), 5)
+  testthat::expect_false(".row" %in% names(ex$temporal_df))
+  cells <- terra::cellFromXY(lyr$template, as.matrix(occ[, c("lon", "lat")]))
+  testthat::expect_equal(ex$temporal_df$bio_01, 10000 + cells)
+  testthat::expect_true(all(c("bio_01", "bio_12") %in% names(ex$env_data)))
+})
+
+testthat::test_that("#19: cov_center() uses all columns by default and explains bad input", {
+  set.seed(19)
+  d <- data.frame(a = rnorm(40), b = rnorm(40), c = rnorm(40))
+  set.seed(1)
+  m0 <- tenm::cov_center(d, mve = TRUE, level = 0.975)
+  set.seed(1)
+  m1 <- tenm::cov_center(d, mve = TRUE, level = 0.975, vars = names(d))
+  testthat::expect_equal(m0, m1)
+  testthat::expect_length(tenm::cov_center(d, mve = FALSE, level = 0.975, vars = "a")$centroid, 1)
+  testthat::expect_error(
+    tenm::cov_center(data.frame(a = d$a, b = 2 * d$a), mve = FALSE, level = 0.975),
+    "singular")
+  d$a[3] <- NA
+  testthat::expect_error(tenm::cov_center(d, mve = FALSE, level = 0.975), "missing values")
+  testthat::expect_error(tenm::cov_center(d[1:2, ], mve = FALSE, level = 0.975),
+                         "more records")
+})

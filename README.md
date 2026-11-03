@@ -361,7 +361,7 @@ they are not duplicates).
 abtc <- tenm::clean_dup_by_date(this_species = abt,
                                 by_mask = TRUE,
                                 threshold = terra::res(tenm_mask)[1],
-                                raster_mask = tenm_mask[1],
+                                raster_mask = tenm_mask,
                                 n_ngbs = 0)
 #> Warning: package 'future' was built under R version 4.3.3
 #> Warning: package 'purrr' was built under R version 4.3.3
