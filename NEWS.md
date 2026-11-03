@@ -1,3 +1,62 @@
+# tenm 0.5.1.9003
+
+## Bug fixes
+
+* `clean_dup()` and `clean_dup_by_date()` now stop when `by_mask = TRUE` and
+  `raster_mask` is not a `SpatRaster`. Before, they silently ran distance
+  thinning instead. The README passed `raster_mask = tenm_mask[1]` (a
+  data.frame), so its time-specific thinning example used the wrong method;
+  it now passes `tenm_mask` (#9).
+
+* `clean_dup()` distance thinning is now greedy: records are visited from the
+  last row to the first and kept unless they are within `threshold` of a
+  record already kept. Before, a record was removed whenever a later record
+  was within `threshold`, even if that record was itself removed, so chains of
+  nearby records were over-thinned. Pairs keep the same record as before; the
+  only change is that wrongly removed records are kept (#10).
+
+* `clean_dup()` with `by_mask = TRUE` now removes records outside the extent
+  of `raster_mask` with a warning. Before, with `n_ngbs = 0` they all
+  collapsed into one kept record, and with `n_ngbs > 0` they were all dropped,
+  both silently (#11).
+
+* `sp_temporal_data()` still matches each record to the folder with the
+  nearest date, but now reports it: a message gives how many records have no
+  folder of the same date, and a warning counts records outside the range of
+  folder dates. Records with a missing or unreadable date are removed with a
+  warning. A missing `layers_by_date_dir`, a directory without folders, or a
+  `layers_date_format` that reads no folder name now give explicit errors
+  instead of "Result must be length 1, not 0" (#23, partly).
+
+* `sp_temporal_data()` now checks the date folders it uses: it stops when a
+  folder has no layers or lacks a layer that the first folder has (before,
+  that variable was `NA` for that date), and warns when the layers have no
+  CRS or when records fall outside the layers' extent, which usually means a
+  CRS mismatch (#25, partly; differing grids are rejected by `ex_by_date()`
+  since #7).
+
+* `clean_dup()` removes records with a missing longitude or latitude, with a
+  message. Before, a missing latitude made it fail. With `by_mask = TRUE` the
+  result is now the input subset by row, so coordinate-only input works and
+  the input column order is kept. Before, the third column was moved first
+  (e.g. `year` before the coordinates in `clean_dup_by_date()` output) (#21).
+
+* `clean_dup_by_date()` now works under `future::plan("multisession")`.
+  Before, its arguments were not sent to the workers ("object not found").
+  The date groups now run in the calling session with `purrr::map()`, and
+  `progress` also controls the outer progress bar (#8).
+
+* `sp_temporal_data()` accepts tibbles, and the documented `"mdy"` date format
+  for occurrence and layer dates (#17).
+
+* `ex_by_date()` keeps exact duplicate records as separate rows with numeric
+  values. Before, they produced list-columns that broke later steps (#18).
+
+* `cov_center()` with the default `vars = NULL` now uses all columns. Before,
+  it selected none and failed with "'x' is probably collinear". It also gives
+  clear errors for non-numeric data, missing values, too few records and a
+  singular covariance matrix (#19).
+
 # tenm 0.5.1.9002
 
 ## Bug fixes
