@@ -1,7 +1,11 @@
 #' ellipsoid_projection: function to project an ellipsoid model
 #' @description Function to project an ellipsoid model using the shape matrix
 #' (covariance matrix) of the niche variables.
-#' @param envlayers A SpatRaster object of the niche variables.
+#' @param envlayers A SpatRaster object of the niche variables. If
+#' \code{centroid} is named, layers are matched to the variables by name
+#' (and reordered if needed); every variable in \code{names(centroid)} must be
+#' a layer name, unless the number of layers equals the number of variables,
+#' in which case layers are matched by position with a warning.
 #' @param centroid A vector with the values of the centers of the ellipsoid
 #' (see \code{\link[tenm]{cov_center}}).
 #' @param covar The shape matrix (covariance) of the ellipsoid
@@ -61,6 +65,28 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
                                  zlab1="S", alpha=0.1,...){
 
   if(methods::is(envlayers, "SpatRaster")){
+    # Match layers to the model variables by name: stats::mahalanobis()
+    # matches columns by position.
+    model_vars <- names(centroid)
+    if(!is.null(model_vars)){
+      missing_vars <- setdiff(model_vars, names(envlayers))
+      if(length(missing_vars) == 0L){
+        envlayers <- envlayers[[model_vars]]
+      } else if(terra::nlyr(envlayers) == length(centroid)){
+        warning("Layer names (", paste(names(envlayers), collapse = ", "),
+                ") do not match the model variables (",
+                paste(model_vars, collapse = ", "),
+                "); matching layers to variables by position.",
+                call. = FALSE)
+      } else {
+        stop("Model variables missing from 'envlayers': ",
+             paste(missing_vars, collapse = ", "), call. = FALSE)
+      }
+    }
+    if(terra::nlyr(envlayers) != length(centroid)){
+      stop("'envlayers' has ", terra::nlyr(envlayers), " layers but the ",
+           "model has ", length(centroid), " variables", call. = FALSE)
+    }
     suitRaster <- envlayers[[1]]
     names(suitRaster) <- output
     nonaids <- which(!is.na(suitRaster[]))

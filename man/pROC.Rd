@@ -40,7 +40,10 @@ percentage of testing data to use for bootstrap iterations in partial ROC.
 Default is 50.}
 
 \item{rseed}{Logical. Whether or not to set a random seed for
-reproducibility. Default is \code{FALSE}.}
+reproducibility. If \code{TRUE}, bootstrap iteration \code{i} uses
+\code{set.seed(i)} and the caller's random number generator state is
+restored on exit. If \code{FALSE}, the bootstrap draws from the current
+random number stream. Default is \code{FALSE}.}
 
 \item{sub_sample}{Logical. Indicates whether to use a subsample of
 the test data. Recommended for large datasets.}

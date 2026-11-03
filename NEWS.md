@@ -1,3 +1,46 @@
+# tenm 0.5.1.9001
+
+## Bug fixes
+
+* `ellipsoid_selection()` (and so `tenm_selection()`) now passes `mve` and
+  `proc_iter` to `ellipsoid_omr()` by name. Before, `proc_iter` bound to
+  `mve`, so `mve = FALSE` was ignored and the partial ROC always ran 100
+  iterations whatever `proc_iter`/`NoOfIteration` was (#2).
+
+* `predict()` and `ellipsoid_projection()` now match layers to model
+  variables by name. Before, layers were used in file or stack order, so
+  any non-alphabetical variable order gave a wrong map without an error.
+  A variable with no layer is now an informative error (#3).
+
+* `ellipsoid_omr()`: `pval_bin` is now the one-sided binomial p-value
+  P(X >= k) (as in `binom.test(..., alternative = "greater")`). Before it
+  was P(X > k), which understated the p-value and was 0 whenever all test
+  points were inside the ellipsoid (#4).
+
+* `bg_by_date()` now aligns template layers, per-date sample sizes and
+  sampled cells by date folder instead of by row position. Before, unsorted
+  `temporal_df` rows or folder names that do not sort in date order
+  (e.g. `"my"` folders) gave background from the wrong date and swapped
+  sample sizes (#5).
+
+* `ex_by_date()` now assigns train/test labels within each date. Before,
+  labels landed on other dates' rows when folder order differed from date
+  order (#6).
+
+* `ex_by_date()` now stops with an informative error if the environmental
+  layers do not all share one grid (extent, resolution and CRS). Before,
+  the first date's cell IDs were reused for every date, so background
+  values came from the wrong pixels (#7).
+
+* `bg_by_date(buffer_distance = ...)` and `cells2samp()` no longer return an
+  arbitrary cell when the buffer holds a single cell, and `bg_by_date()` no
+  longer fails on overlapping buffers (#12).
+
+* `pROC()` now honours `rseed`: with `rseed = FALSE` the bootstrap draws from
+  the caller's random number stream, and with `rseed = TRUE` iterations are
+  seeded for reproducibility and the caller's RNG state is restored on exit.
+  Before, every call reset the global RNG to `set.seed(n_iter)` (#13).
+
 # tenm 0.5.1
 
 * Improvements to documentation
