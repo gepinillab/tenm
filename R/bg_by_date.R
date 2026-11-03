@@ -53,25 +53,24 @@ bg_by_date <- function(this_species,
                        process_ngbs_by = 100){
   stopifnot(inherits(this_species, "sp.temporal.env"))
   tdf <- this_species$temporal_df
-  samp_prop <- layer_dates <- var_name <- layer_val <- NULL
-  df_samps <-  tdf |> dplyr::group_by(layer_dates) |>
+  samp_prop <- layers_path <- var_name <- layer_val <- NULL
+  # Sample size per date folder, keyed by layers_path
+  df_samps <-  tdf |> dplyr::group_by(layers_path) |>
     dplyr::summarise(samp_prop = dplyr::n()/nrow(tdf),
                      n_samples = ceiling(samp_prop*n_bg))
 
-  paths_layers <-   split(tdf,tdf$layers_path) |> purrr::map_df(function(x){
-    layer_path <-     list.files(x$layers_path[1],
-                                 pattern = this_species$layers_ext,
-                                 full.names = TRUE)[1]
-    layer_path_df <- data.frame(layers_path=x$layers_path,layer_path)
-    return(layer_path_df)
-  })
-
-
-  tdf$layer_path <-  paths_layers$layer_path
-
-
+  # One template layer per date folder, assigned to rows by key
+  # (not by position, which breaks when rows are not sorted by folder)
+  key_paths <- unique(tdf$layers_path)
+  key_layer <- vapply(key_paths, function(x){
+    list.files(x, pattern = this_species$layers_ext, full.names = TRUE)[1]
+  }, character(1))
+  tdf$layer_path <- unname(key_layer[match(tdf$layers_path, key_paths)])
 
   ddL <- split(tdf,tdf$layer_path)
+  # Date folder and sample size of each group, looked up by key
+  ddL_keys <- vapply(ddL, function(x) x$layers_path[1], character(1))
+  ddL_n_samples <- df_samps$n_samples[match(ddL_keys, df_samps$layers_path)]
   if(!is.null(buffer_ngbs)){
     cells_to_samp <-  seq_along(ddL)  |> purrr::map(function(z){
 
@@ -81,7 +80,7 @@ bg_by_date <- function(this_species,
                                    cell_ids = ddL[[z]]$cell_ids_year,
                                    buffer_ngbs = buffer_ngbs,
                                    raster_mask = terra::rast(ddL[[z]]$layer_path[1]),
-                                   n_bg =  df_samps$n_samples[z],
+                                   n_bg =  ddL_n_samples[z],
                                    process_ngbs_by = process_ngbs_by,
                                    progress = FALSE)
       return(cell_ids)
@@ -97,8 +96,8 @@ bg_by_date <- function(this_species,
       buff_te <- terra::buffer(vec_occ,
                                width = buffer_distance)
       cell2sa <- terra::cells(r,buff_te)[,2]
-      nsamples <- ifelse(df_samps$n_samples[z]>length(cell2sa),
-                         length(cell2sa),df_samps$n_samples[z])
+      nsamples <- ifelse(ddL_n_samples[z]>length(cell2sa),
+                         length(cell2sa),ddL_n_samples[z])
       cell_ids <- sample(cell2sa,nsamples)
       return(cell_ids)
     })
@@ -112,7 +111,7 @@ bg_by_date <- function(this_species,
                      full.names = TRUE,recursive = FALSE)
     data.frame(dir_paths=dir_paths[x],layers_path=cp)
   })
-  names(cells_to_samp) <- dir_paths
+  names(cells_to_samp) <- ddL_keys
 
 
   ex_date <- seq_len(nrow(all_layers)) |> furrr::future_map_dfr(function(x){

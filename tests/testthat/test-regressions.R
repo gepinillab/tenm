@@ -96,3 +96,48 @@ testthat::test_that("#4: pval_bin is the one-sided binomial P(X >= k)", {
     testthat::expect_equal(r$pval_bin, ref)
   }
 })
+
+testthat::test_that("#5: bg_by_date() is keyed by date folder, not row position", {
+  future::plan("sequential")
+  occ_xy <- data.frame(x = c(5.5, 24.5, 20.5, 24.5),
+                       y = c(5.5, 24.5, 24.5, 20.5),
+                       year_index = c(1, 2, 2, 2))
+  scenarios <- list(list(folders = c("12-1939", "01-1940"), fmt = "my",
+                         reverse = FALSE),
+                    list(folders = c("1939", "1940"), fmt = "y",
+                         reverse = TRUE))
+  for (sc in scenarios) {
+    lay <- make_year_layers(sc$folders)
+    occs <- data.frame(lon = occ_xy$x, lat = occ_xy$y,
+                       date = sc$folders[occ_xy$year_index])
+    set.seed(5)
+    st <- tenm::sp_temporal_data(occs = occs, longitude = "lon",
+                                 latitude = "lat", sp_date_var = "date",
+                                 occ_date_format = sc$fmt,
+                                 layers_date_format = sc$fmt,
+                                 layers_by_date_dir = lay$root,
+                                 layers_ext = "*.tif$")
+    ex <- tenm::ex_by_date(st, train_prop = 0.7)
+    if (sc$reverse) {
+      ex$temporal_df <- ex$temporal_df[rev(seq_len(nrow(ex$temporal_df))), ]
+    }
+    bg <- tenm::bg_by_date(ex, buffer_ngbs = 2, n_bg = 40)$env_bg
+    year_index <- match(basename(bg$ID_YEAR), sc$folders)
+    # sample size proportional to each year's occurrences (1 and 3 of 4)
+    testthat::expect_equal(as.vector(table(factor(year_index, 1:2))),
+                           c(10, 30))
+    # each background cell lies within 2 cells of its own year's occurrences
+    cell <- terra::cellFromXY(lay$template, as.matrix(bg[, c("lon", "lat")]))
+    rc <- terra::rowColFromCell(lay$template, cell)
+    occ_rc <- terra::rowColFromCell(
+      lay$template,
+      terra::cellFromXY(lay$template, as.matrix(occ_xy[, c("x", "y")])))
+    in_buffer <- vapply(seq_len(nrow(bg)), function(j) {
+      own <- occ_rc[occ_xy$year_index == year_index[j], , drop = FALSE]
+      any(pmax(abs(own[, 1] - rc[j, 1]), abs(own[, 2] - rc[j, 2])) <= 2)
+    }, logical(1))
+    testthat::expect_true(all(in_buffer))
+    # values come from the same year's layers at the reported coordinates
+    testthat::expect_equal(bg$bio_01, year_index * 10000 + cell)
+  }
+})
