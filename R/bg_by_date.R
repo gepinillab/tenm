@@ -95,10 +95,13 @@ bg_by_date <- function(this_species,
       vec_occ <- terra::vect(as.matrix(occ_va),crs=crsL)
       buff_te <- terra::buffer(vec_occ,
                                width = buffer_distance)
-      cell2sa <- terra::cells(r,buff_te)[,2]
+      # unique(): overlapping buffers return the same cell more than once
+      cell2sa <- unique(terra::cells(r,buff_te)[,2])
       nsamples <- ifelse(ddL_n_samples[z]>length(cell2sa),
                          length(cell2sa),ddL_n_samples[z])
-      cell_ids <- sample(cell2sa,nsamples)
+      # Index with sample.int(): sample(x, n) samples from 1:x when
+      # length(x) == 1
+      cell_ids <- cell2sa[sample.int(length(cell2sa),nsamples)]
       return(cell_ids)
     })
   }

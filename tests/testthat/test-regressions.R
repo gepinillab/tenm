@@ -189,3 +189,49 @@ testthat::test_that("#7: ex_by_date() rejects layers that do not share one grid"
   testthat::expect_s3_class(tenm::ex_by_date(make_st(same), train_prop = 0.7),
                             "sp.temporal.env")
 })
+
+testthat::test_that("#12: buffer_distance and cells2samp() handle single and repeated cells", {
+  future::plan("sequential")
+  lay <- make_year_layers("1939")
+  bg_for <- function(occs, buffer_distance, n_bg) {
+    st <- tenm::sp_temporal_data(occs = occs, longitude = "lon",
+                                 latitude = "lat", sp_date_var = "date",
+                                 occ_date_format = "y",
+                                 layers_date_format = "y",
+                                 layers_by_date_dir = lay$root,
+                                 layers_ext = "*.tif$")
+    ex <- tenm::ex_by_date(st, train_prop = 0.7)
+    tenm::bg_by_date(ex, buffer_ngbs = NULL,
+                     buffer_distance = buffer_distance, n_bg = n_bg)$env_bg
+  }
+  # A 1 km buffer around a cell centre covers only that cell
+  occ <- data.frame(lon = 15.5, lat = 15.5, date = "1939")
+  cell <- terra::cellFromXY(lay$template, cbind(15.5, 15.5))
+  for (seed in 1:3) {
+    set.seed(seed)
+    bg <- bg_for(occ, buffer_distance = 1000, n_bg = 10)
+    testthat::expect_equal(
+      terra::cellFromXY(lay$template, as.matrix(bg[, c("lon", "lat")])), cell)
+    testthat::expect_equal(bg$bio_01, 10000 + cell)
+  }
+  # Overlapping buffers do not yield duplicated background cells
+  occ <- data.frame(lon = c(10.5, 11.5, 12.5), lat = 10.5, date = "1939")
+  buf <- terra::buffer(terra::vect(as.matrix(occ[, 1:2]), crs = "EPSG:4326"),
+                       width = 150000)
+  n_cells <- length(unique(terra::cells(lay$template, buf)[, 2]))
+  set.seed(1)
+  bg <- bg_for(occ, buffer_distance = 150000, n_bg = 1000)
+  testthat::expect_equal(nrow(bg), n_cells)
+  testthat::expect_false(any(duplicated(bg[, c("lon", "lat")])))
+  # cells2samp() with a single neighbouring cell returns that cell
+  mask <- terra::rast(nrows = 1, ncols = 2, xmin = 0, xmax = 2, ymin = 0,
+                      ymax = 1, crs = "EPSG:4326")
+  terra::values(mask) <- 1:2
+  for (seed in 1:10) {
+    set.seed(seed)
+    testthat::expect_equal(
+      tenm::cells2samp(data = data.frame(lon = 0.5, lat = 0.5),
+                       longitude = "lon", latitude = "lat", buffer_ngbs = 1,
+                       raster_mask = mask, n_bg = 1, progress = FALSE), 2)
+  }
+})

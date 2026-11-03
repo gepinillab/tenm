@@ -77,7 +77,8 @@ cells2samp <- function(data,longitude,latitude,cell_ids = NULL,buffer_ngbs = 2,
     adj_cells <- terra::adjacent(x = raster_mask,
                                  cells = cell_idsL[[x]],pairs=TRUE,
                                  directions = ngMat,include=FALSE)
-    rcells <- unique(adj_cells[, 2])
+    # terra::adjacent() returns a vector, not a matrix, for a single pair
+    rcells <- unique(matrix(adj_cells, ncol = 2)[, 2])
     return(rcells)
 
   },.progress = progress)
@@ -86,6 +87,8 @@ cells2samp <- function(data,longitude,latitude,cell_ids = NULL,buffer_ngbs = 2,
   if (length(rcells) < n_bg) {
     n_bg  <- length(rcells)
   }
-  sam <- sample(rcells, size = n_bg)
+  # Index with sample.int(): sample(x, n) samples from 1:x when
+  # length(x) == 1
+  sam <- rcells[sample.int(length(rcells), size = n_bg)]
   return(sam)
 }
