@@ -6,7 +6,12 @@
 #' (see \code{\link[tenm]{ex_by_date}} ) or sp.temporal.bg
 #' (see \code{\link[tenm]{bg_by_date}}).
 #' @param sp_name Character vector specifying the species name.
-#' @return A data.frame formatted as Samples With Data (SWD) table.
+#' @return A data.frame formatted as Samples With Data (SWD) table. For an
+#' sp.temporal.env object: \code{sp_name}, the longitude and latitude
+#' columns, the date column and the environmental variables. For an
+#' sp.temporal.bg object: \code{sp_name = "background"}, longitude,
+#' latitude, \code{year} (the year of the layer date of each folder) and the
+#' environmental variables. Columns are selected by name.
 #' @export
 #' @examples
 #' \donttest{
@@ -38,17 +43,38 @@ tdf2swd <- function(this_species,sp_name="sp"){
   cls <- class(this_species)
   if(length(cls)==1L && methods::is(this_species,"sp.temporal.env")){
     df_base <- this_species$temporal_df
-    swd_df <- data.frame(sp_name,df_base[,-c(4,5,6,ncol(df_base))])
+    # Select columns by name: coordinates, date, environmental variables
+    swd_df <- data.frame(sp_name,
+                         df_base[, c(this_species$lon_lat_vars,
+                                     this_species$sp_date_var,
+                                     env_var_names(this_species)),
+                                 drop = FALSE])
   } else if("sp.temporal.bg" %in% cls){
     df_base <- this_species$env_bg
-    years <- as.numeric(basename(df_base$ID_YEAR))
-    #ncols <- ncol(df_base)
+    # Year from the layer date of each folder, not from the folder name
+    tdf <- this_species$temporal_df
+    years <- lubridate::year(tdf$layer_dates[match(df_base$ID_YEAR,
+                                                   tdf$layers_path)])
+    bg_vars <- setdiff(names(df_base),
+                       c("ID_YEAR", this_species$lon_lat_vars))
     swd_df <- data.frame(sp_name="background",
-                         df_base[,c(2,3)],
-                         year=years,df_base[,-c(1,2,3)])
+                         df_base[, this_species$lon_lat_vars],
+                         year=years,df_base[, bg_vars, drop = FALSE])
   } else{
     stop("this_species should be of class sp.temporal.env or sp.temporal.bg")
   }
   return(swd_df)
 
+}
+
+# Names of the environmental variables of an sp.temporal.env object. Objects
+# created before "env_vars" was stored use the columns of env_data (without
+# trian_test), or else the columns of temporal_df that are not metadata.
+env_var_names <- function(this_species){
+  if(!is.null(this_species$env_vars)) return(this_species$env_vars)
+  if(!is.null(this_species$env_data))
+    return(setdiff(names(this_species$env_data), "trian_test"))
+  meta <- c(this_species$lon_lat_vars, this_species$sp_date_var,
+            "layer_dates", "layers_path", "cell_ids_year", "trian_test")
+  setdiff(names(this_species$temporal_df), meta)
 }

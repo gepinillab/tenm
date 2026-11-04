@@ -76,7 +76,7 @@
 
 #' future::plan("sequential")
 #' varcorrs <- tenm::correlation_finder(environmental_data =
-#'                                        abex$env_data[,-ncol(abex$env_data)],
+#'                                        abex$env_data,
 #'                                      method = "spearman",
 #'                                      threshold = 0.8,
 #'                                      verbose = FALSE)

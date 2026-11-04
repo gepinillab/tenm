@@ -70,7 +70,7 @@
 #' abbg <- tenm::bg_by_date(this_species = abex,
 #'                          buffer_ngbs=10,n_bg=50000)
 #' future::plan("sequential")
-#' edata <- abex$env_data
+#' edata <- abex$temporal_df
 #' etrain <- edata[edata$trian_test=="Train",c("bio_05","bio_06","bio_12")]
 #' etest <- edata[edata$trian_test=="Test",c("bio_05","bio_06","bio_12")]
 #' bg <- abbg$env_bg[,c("bio_05","bio_06","bio_12")]

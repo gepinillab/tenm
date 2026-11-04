@@ -254,7 +254,7 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
 
   # ----------------------------------------------------------------------------
   # Test for plot_ellipsoid
-  edata <- abex$env_data
+  edata <- abex$temporal_df
   etrain <- edata[edata$trian_test=="Train",c("bio_05","bio_06","bio_12")]
   etest <- edata[edata$trian_test=="Test",c("bio_05","bio_06","bio_12")]
   rgl::open3d()
@@ -280,8 +280,7 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
   bio15_id <- which(names(abex$env_data) == "bio_15")
 
   varcorrs <- tenm::correlation_finder(environmental_data =
-                                         abex$env_data[,-c(ncol(abex$env_data),
-                                                           bio15_id)],
+                                         abex$env_data[,-bio15_id],
                                        method = "spearman",
                                        threshold = 0.8,
                                        verbose = FALSE)
@@ -289,7 +288,7 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
                                                   method = "spearman",
                                                   threshold = 0.8,
                                                   verbose = FALSE))
-  edata <- abex$env_data
+  edata <- abex$temporal_df
 
   etrain <- edata[edata$trian_test=="Train",] |> data.frame()
   etest <- edata[edata$trian_test=="Test",] |> data.frame()

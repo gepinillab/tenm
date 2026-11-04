@@ -128,11 +128,11 @@
 #'                          buffer_ngbs=10,n_bg=50000)
 #' future::plan("sequential")
 #' varcorrs <- tenm::correlation_finder(environmental_data =
-#'                                      abex$env_data[,-ncol(abex$env_data)],
+#'                                      abex$env_data,
 #'                                      method = "spearman",
 #'                                      threshold = 0.8,
 #'                                      verbose = FALSE)
-#' edata <- abex$env_data
+#' edata <- abex$temporal_df
 #' etrain <- edata[edata$trian_test=="Train",] |> data.frame()
 #' etest <- edata[edata$trian_test=="Test",] |> data.frame()
 #' bg <- abbg$env_bg

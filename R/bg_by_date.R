@@ -145,10 +145,12 @@ bg_by_date <- function(this_species,
   xys <- terra::xyFromCell(r1,bg_env$cellids)
   colnames(xys) <- this_species$lon_lat_vars
 
+  # Environmental variables by name (not position)
+  bg_vars <- setdiff(names(bg_env), c("ID_YEAR", "cellids"))
   bg_env <-   seq_along(bg_env$ID_YEAR) |> furrr::future_map_dfr(function(x){
-    ID_YEAR <- rep(bg_env$ID_YEAR[[x]],length(bg_env[[3]][[x]]))
-    df_year <- seq_along(bg_env[-(1:2)]) |> purrr::map_dfc(function(y){
-      data <- bg_env[-(1:2)]
+    ID_YEAR <- rep(bg_env$ID_YEAR[[x]],length(bg_env[[bg_vars[1]]][[x]]))
+    df_year <- seq_along(bg_vars) |> purrr::map_dfc(function(y){
+      data <- bg_env[bg_vars]
       value <- data[[y]][[x]]
       df1 <- data.frame(value)
       names(df1) <- names(data[y])
@@ -157,8 +159,10 @@ bg_by_date <- function(this_species,
     df_res <- data.frame(ID_YEAR,df_year)
     return(df_res)
   },.progress = TRUE,.options = furrr::furrr_options(seed = NULL,
-                                                     globals = c("bg_env")))
-  bg_env <- data.frame(ID_YEAR = bg_env[,1],xys,bg_env[,-1])
+                                                     globals = c("bg_env",
+                                                                 "bg_vars")))
+  bg_env <- data.frame(ID_YEAR = bg_env$ID_YEAR, xys,
+                       bg_env[, bg_vars, drop = FALSE])
 
   sp.temp.data.env <- list(temporal_df = tdf,
                            sp_date_var = this_species$sp_date_var,

@@ -840,3 +840,33 @@ testthat::test_that("#53: plots use deterministic viridis defaults and accept co
   cols <- tenm:::col_scale(c(0, 0.5, 1), grDevices::hcl.colors(3, "viridis"))
   testthat::expect_equal(cols, grDevices::hcl.colors(3, "viridis"))
 })
+
+testthat::test_that("#28: columns are selected by name; env_data excludes trian_test", {
+  future::plan("sequential")
+  lyr <- make_year_layers(c("2000-01", "2000-02"))
+  set.seed(28)
+  occ <- data.frame(lon = stats::runif(10, 1, 29), lat = stats::runif(10, 1, 29),
+                    date = rep(c("2000-01", "2000-02"), each = 5))
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ym", "ym", lyr$root)
+  tdf <- st$temporal_df
+  st$temporal_df <- data.frame(tdf[, c("date", "lon", "lat", "layer_dates", "layers_path")],
+                               source = "survey")
+  ex <- suppressMessages(tenm::ex_by_date(st, train_prop = 0.7))
+  testthat::expect_named(ex$env_data, c("bio_01", "bio_12"))
+  testthat::expect_equal(ex$env_vars, c("bio_01", "bio_12"))
+  testthat::expect_true("trian_test" %in% names(ex$temporal_df))
+  swd <- tenm::tdf2swd(ex, sp_name = "sp")
+  testthat::expect_named(swd, c("sp_name", "lon", "lat", "date", "bio_01", "bio_12"))
+  # bio_01 = folder index * 10000 + cell (see make_year_layers())
+  cell <- terra::cellFromXY(lyr$template, as.matrix(swd[, c("lon", "lat")]))
+  idx <- match(basename(ex$temporal_df$layers_path), c("2000-01", "2000-02"))
+  testthat::expect_equal(swd$bio_01, idx * 10000 + cell)
+  bg <- suppressMessages(tenm::bg_by_date(ex, buffer_ngbs = 2, n_bg = 20))
+  bg_swd <- tenm::tdf2swd(bg)
+  testthat::expect_named(bg_swd, c("sp_name", "lon", "lat", "year", "bio_01", "bio_12"))
+  testthat::expect_true(all(bg_swd$year == 2000))
+  # Objects without env_vars (created before it was stored) still work
+  ex_old <- ex
+  ex_old$env_vars <- NULL
+  testthat::expect_named(tenm::tdf2swd(ex_old), names(swd))
+})

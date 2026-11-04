@@ -38,7 +38,7 @@
 #' future::plan("multisession",workers=2)
 #' abex <- tenm::ex_by_date(abtc,train_prop=0.7)
 #' future::plan("sequential")
-#' envdata <- abex$env_data[,-ncol(abex$env_data)]
+#' envdata <- abex$env_data
 #' ecors <- tenm::correlation_finder(environmental_data =envdata,
 #'                                   method="spearman",
 #'                                   threshold = 0.7 )

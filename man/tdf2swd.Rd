@@ -14,7 +14,12 @@ tdf2swd(this_species, sp_name = "sp")
 \item{sp_name}{Character vector specifying the species name.}
 }
 \value{
-A data.frame formatted as Samples With Data (SWD) table.
+A data.frame formatted as Samples With Data (SWD) table. For an
+sp.temporal.env object: \code{sp_name}, the longitude and latitude
+columns, the date column and the environmental variables. For an
+sp.temporal.bg object: \code{sp_name = "background"}, longitude,
+latitude, \code{year} (the year of the layer date of each folder) and the
+environmental variables. Columns are selected by name.
 }
 \description{
 Converts a temporal data.frame to Samples With Data (SWD) table for use
