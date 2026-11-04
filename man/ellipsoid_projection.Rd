@@ -16,6 +16,7 @@ ellipsoid_projection(
   ylab1 = "niche var 2",
   zlab1 = "S",
   alpha = 0.1,
+  col = NULL,
   ...
 )
 }
@@ -48,6 +49,11 @@ in which case layers are matched by position with a warning.}
 \item{zlab1}{For z label for 2-dimensional histogram}
 
 \item{alpha}{Control the transparency of the 3-dimensional ellipsoid}
+
+\item{col}{Colours used in the niche plot, from low to high suitability
+(also when \code{output = "mahalanobis"}). The default, \code{NULL},
+uses \code{grDevices::hcl.colors(100, "viridis")}. Plotting does not use
+the random number generator.}
 
 \item{...}{Arguments passed to \code{\link[rgl]{plot3d}} function from rgl}
 }

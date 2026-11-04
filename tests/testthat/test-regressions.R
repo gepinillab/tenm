@@ -811,3 +811,32 @@ testthat::test_that("#36: parallel ellipsoid_selection() restores the caller's o
   testthat::expect_equal(getOption("future.globals.maxSize"), 123456789)
   testthat::expect_s3_class(future::plan(), "sequential")
 })
+
+testthat::test_that("#53: plots use deterministic viridis defaults and accept col", {
+  old <- options(rgl.useNULL = TRUE)
+  on.exit(options(old), add = TRUE)
+  set.seed(53)
+  x <- stats::rnorm(60)
+  y <- stats::rnorm(60)
+  f <- tempfile(fileext = ".pdf")
+  grDevices::pdf(f)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  set.seed(1)
+  s0 <- .Random.seed
+  tenm::plot_ellipsoid(x, y, mve = FALSE)
+  testthat::expect_identical(.Random.seed, s0)
+  mk_layer <- function() terra::rast(nrows = 10, ncols = 10, vals = stats::runif(100, 1, 3))
+  r3 <- c(mk_layer(), mk_layer(), mk_layer())
+  names(r3) <- c("a", "b", "c")
+  cen <- c(a = 2, b = 2, c = 2)
+  cv <- diag(0.2, 3)
+  dimnames(cv) <- list(names(cen), names(cen))
+  set.seed(1)
+  s0 <- .Random.seed
+  testthat::expect_s4_class(
+    tenm::ellipsoid_projection(r3, cen, cv, plot = TRUE, size = 2,
+                               col = grDevices::grey.colors(5)), "SpatRaster")
+  testthat::expect_identical(.Random.seed, s0)
+  cols <- tenm:::col_scale(c(0, 0.5, 1), grDevices::hcl.colors(3, "viridis"))
+  testthat::expect_equal(cols, grDevices::hcl.colors(3, "viridis"))
+})

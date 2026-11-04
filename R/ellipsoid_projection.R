@@ -19,6 +19,10 @@
 #' @param ylab1 For y label for 2-dimensional histogram
 #' @param zlab1 For z label for 2-dimensional histogram
 #' @param alpha Control the transparency of the 3-dimensional ellipsoid
+#' @param col Colours used in the niche plot, from low to high suitability
+#' (also when \code{output = "mahalanobis"}). The default, \code{NULL},
+#' uses \code{grDevices::hcl.colors(100, "viridis")}. Plotting does not use
+#' the random number generator.
 #' @param ... Arguments passed to \code{\link[rgl]{plot3d}} function from rgl
 #' @return Returns a SpatRaster of suitability values.
 #' @export
@@ -62,7 +66,9 @@
 ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
                                  output="suitability",plot=TRUE,size,
                                  xlab1="niche var 1",ylab1= "niche var 2",
-                                 zlab1="S", alpha=0.1,...){
+                                 zlab1="S", alpha=0.1, col = NULL,...){
+  # Colours from low to high suitability; fixed, colour-blind-friendly default
+  if(is.null(col)) col <- grDevices::hcl.colors(100, "viridis")
 
   if(methods::is(envlayers, "SpatRaster")){
     # Match layers to the model variables by name: stats::mahalanobis()
@@ -141,8 +147,12 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
     z <- outer(x,y,FUN = suit1)
     oldpar <- graphics::par(no.readonly = TRUE)
     on.exit(graphics::par(oldpar))
+    # Colour each facet by its mean suitability
+    zf <- (z[-1, -1] + z[-1, -ncol(z)] + z[-nrow(z), -1] +
+             z[-nrow(z), -ncol(z)]) / 4
+    facet_col <- col_scale(zf, col)
     p1 <- graphics::persp(x,y,z, box=T,xlab=xlab1,
-                          ylab=ylab1,zlab=zlab1, col="blue",
+                          ylab=ylab1,zlab=zlab1, col=facet_col,
                           theta = 55, phi = 30,r = 40,
                           d = 0.1, expand = 0.5,
                           ticktype = "detailed", nticks=5,
@@ -190,7 +200,8 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
     else
       np <- dim(data1)[1]
 
-    toSam <- sample(1:length(data1[,1]),np)
+    # Deterministic subsample (no use of the RNG)
+    toSam <- unique(round(seq(1, length(data1[,1]), length.out = np)))
     data1 <- data1[toSam,]
     if(output == "suitability"){
       suits2 <- suits[toSam]
@@ -199,7 +210,7 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
       suits2 <- suit(suits[toSam])
     }
 
-    rgl::plot3d(data1,size = size,col=grDevices::hsv(suits2*.71,.95,.9),
+    rgl::plot3d(data1,size = size,col=col_scale(suits2, col),
                 xlab = xlab1, ylab = ylab1, zlab = zlab1,...)
     rgl::wire3d(ellips_E, col=4, lit=FALSE,alpha=alpha,...)
   }
@@ -208,4 +219,13 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
   return(suitRaster)
 
 
+}
+
+# Map numeric values to colours of 'col' (low to high)
+col_scale <- function(v, col){
+  if(length(col) == 1L) return(rep(col, length(v)))
+  rng <- range(v, na.rm = TRUE)
+  if(!all(is.finite(rng)) || diff(rng) == 0) return(rep(col[length(col)], length(v)))
+  idx <- 1 + floor((v - rng[1]) / diff(rng) * (length(col) - 1))
+  col[idx]
 }

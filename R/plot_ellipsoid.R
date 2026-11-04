@@ -5,7 +5,8 @@
 #' @param y Numeric vector representing the y coordinate of the ellipsoid.
 #' @param z Numeric vector representing the z coordinate of the ellipsoid.
 #' Defaults to NULL.
-#' @param col Plot color
+#' @param col Colour of the ellipsoid. The default, \code{NULL}, uses
+#' \code{grDevices::hcl.colors(1, "viridis")}.
 #' @param xlab Character vector with the name of the x-axis label.
 #' @param ylab Character vector with the name of the y-axis label.
 #' @param zlab Character vector with the name of the z-axis label
@@ -65,10 +66,6 @@ plot_ellipsoid <- function(x,y,z=NULL,xlab="x",ylab="y",zlab="x",mve=TRUE,
                            level=0.975,col=NULL,
                            lwd_axes=2,lty_axes=2,
                            semiaxes=FALSE,add=FALSE,...){
-  # Color palette taken from the RColorBrewer package
-  dark2 <- c("#1B9E77","#D95F02","#7570B3",
-             "#E7298A","#66A61E","#E6AB02",
-             "#A6761D","#666666","#ff7f00")
 
   e_data <- data.frame(x,y)
   if(is.numeric(z)) e_data <- data.frame(e_data,z)
@@ -82,7 +79,8 @@ plot_ellipsoid <- function(x,y,z=NULL,xlab="x",ylab="y",zlab="x",mve=TRUE,
   axes_coordinates <- e_metadata$axis_coordinates
   oldpar <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(oldpar))
-  if(is.null(col)) col <- sample(dark2,1)
+  # Fixed, colour-blind-friendly default; no use of the RNG
+  if(is.null(col)) col <- grDevices::hcl.colors(1, "viridis")
   if(ndim==2){
 
     r <- sigma[1, 2]
