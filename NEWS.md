@@ -1,5 +1,9 @@
 # tenm 0.5.1
 
+* `predict()` now accepts a `size` argument and forwards it to
+  `ellipsoid_projection()`, so callers can set the niche plot point size
+  without a duplicate-argument error (#55).
+
 * Improvements to documentation
 
 # tenm 0.5.0

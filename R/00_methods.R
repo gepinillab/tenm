@@ -16,6 +16,8 @@
 #' if mve is \code{TRUE}.
 #' @param output Character indicating if the model outputs "suitability" values
 #'  or "mahalanobis" distances.
+#' @param size Point size used in the niche plot passed to
+#'   \code{\link[tenm]{ellipsoid_projection}}. Defaults to 2.
 #' @param ... Additional parameters passed to
 #' \code{\link[tenm]{ellipsoid_projection}}.
 #' @return A SpatRaster object representing predicted suitability values or
@@ -113,7 +115,8 @@
 methods::setMethod('predict', signature(object="sp.temporal.selection"),
                    function(object, model_variables=NULL,layers = NULL,
                             layers_path=NULL,layers_ext=NULL,
-                            mve = TRUE, level=0.975,output = "suitability",...){
+                            mve = TRUE, level=0.975,output = "suitability",
+                            size = 2,...){
 
                      out_check <- match.arg(output,
                                             choices = c("suitability",
@@ -149,7 +152,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                              centroid = mod$centroid,
                                                              covar = mod$covariance,
                                                              level = 0.9999,
-                                                             plot = TRUE,size = 2,
+                                                             plot = TRUE,size = size,
                                                              output = output,
                                                              ...)
                        names(projmods) <- output
@@ -176,7 +179,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                                covar = mod$covariance,
                                                                level = 0.9999,
                                                                plot = TRUE,
-                                                               size = 2,
+                                                               size = size,
                                                                output = output,
                                                                ...)
                          utils::setTxtProgressBar(pb, x, title = NULL, label = NULL)
@@ -202,7 +205,7 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                                                                covar = mod$covariance,
                                                                level = 0.9999,
                                                                plot = TRUE,
-                                                               size = 2,
+                                                               size = size,
                                                                output = output,
                                                                ...)
 
