@@ -245,5 +245,9 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
     }
 
   }
+  # Keep the fitted ellipsoid so that callers can reuse the exact model
+  # that was evaluated (see tenm_selection() and predict()).
+  attr(d_results, "ellipsoid") <- list(centroid = emd$centroid,
+                                       covariance = emd$covariance)
   return(d_results)
 }

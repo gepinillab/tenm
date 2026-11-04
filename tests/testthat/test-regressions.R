@@ -683,3 +683,56 @@ testthat::test_that("#19: cov_center() uses all columns by default and explains 
   testthat::expect_error(tenm::cov_center(d[1:2, ], mve = FALSE, level = 0.975),
                          "more records")
 })
+
+testthat::test_that("#24: tenm_selection() stores the evaluated ellipsoids and predict() uses them", {
+  dir70 <- system.file("extdata/bio_1970_2000", package = "tenm")
+  lyr <- terra::rast(file.path(dir70, c("bio_01.tif", "bio_12.tif")))
+  names(lyr) <- c("bio_01", "bio_12")
+  v <- terra::values(lyr)
+  ok_rows <- stats::complete.cases(v)
+  rng <- apply(v[ok_rows, ], 2, range)
+  set.seed(241)
+  tdf <- data.frame(bio_01 = stats::runif(200, rng[1, 1], rng[2, 1]),
+                    bio_12 = stats::runif(200, rng[1, 2], rng[2, 2]),
+                    trian_test = rep(c("Train", "Test"), c(150, 50)))
+  sp_bg <- list(temporal_df = tdf, layers_ext = ".tif$",
+                env_bg = as.data.frame(v[ok_rows, ]))
+  class(sp_bg) <- "sp.temporal.bg"
+  utils::capture.output(
+    sel <- tenm::tenm_selection(sp_bg, omr_criteria = 0.2,
+                                ellipsoid_level = 0.975,
+                                vars2fit = c("bio_01", "bio_12"),
+                                nvars_to_fit = 2, mve = TRUE, proc = FALSE,
+                                parallel = FALSE))
+  passed <- sel$mods_table$fitted_vars[sel$mods_table$om_rate_train <= 0.2 &
+                                         sel$mods_table$om_rate_test <= 0.2]
+  testthat::expect_setequal(names(sel$ellipsoids), passed)
+  testthat::expect_null(attr(sel$mods_table, "ellipsoids"))
+  e <- sel$ellipsoids[["bio_01,bio_12"]]
+  testthat::expect_named(e, c("centroid", "covariance"))
+  # The stored ellipsoid is the evaluated one: it reproduces the omission rates
+  row <- sel$mods_table[sel$mods_table$fitted_vars == "bio_01,bio_12", ]
+  tr <- tdf[tdf$trian_test == "Train", c("bio_01", "bio_12")]
+  ine <- tenm::inEllipsoid(e$centroid, e$covariance, tr, level = 0.975)
+  testthat::expect_equal(mean(ine$in_Ellipsoid == 0), row$om_rate_train)
+  # predict() projects it without refitting, so repeated calls are identical
+  set.seed(1)
+  utils::capture.output(p1 <- predict(sel, layers = lyr), type = "message")
+  set.seed(2)
+  utils::capture.output(p2 <- predict(sel, layers = lyr), type = "message")
+  testthat::expect_identical(terra::values(p1), terra::values(p2))
+  ref <- rep(NA_real_, nrow(v))
+  ref[ok_rows] <- exp(-0.5 * stats::mahalanobis(v[ok_rows, ], e$centroid,
+                                                e$covariance))
+  testthat::expect_equal(terra::values(p1)[, 1], ref)
+  # Variables given in another order use the same stored ellipsoid
+  utils::capture.output(p3 <- predict(sel, model_variables = c("bio_12", "bio_01"),
+                                      layers = lyr[[c("bio_12", "bio_01")]]),
+                        type = "message")
+  testthat::expect_equal(terra::values(p3)[, 1], ref)
+  # Objects saved before this change still work by refitting
+  old <- sel
+  old$ellipsoids <- NULL
+  utils::capture.output(p4 <- predict(old, layers = lyr), type = "message")
+  testthat::expect_s4_class(p4, "SpatRaster")
+})

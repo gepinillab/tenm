@@ -62,7 +62,12 @@ for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.}
 An object of class "sp.temporal.selection" containing metadata of
 model statistics of the calibrated models, obtainable from the "mods_table"
 attribute. The "mve" and "ellipsoid_level" elements store the settings used
-to fit the models; \code{predict()} uses them by default. The function
+to fit the models. The "ellipsoids" element is a list, named by
+"fitted_vars", with the fitted "centroid" and "covariance" of each model
+that passed \code{omr_criteria} for both training and testing data; these
+are the ellipsoids that were evaluated. \code{predict()} projects a stored
+ellipsoid directly instead of refitting it, so repeated predictions are
+identical even with \code{mve = TRUE}. The function
 internally uses
 \code{\link[tenm]{ellipsoid_selection}}
 to obtain model statistics. Note that this function inherits attributes

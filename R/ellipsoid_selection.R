@@ -190,6 +190,8 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     #plan(multisession,workers=n_cores)
     options(future.globals.maxSize= 8500*1024^2)
     model_select <- new.env()
+    # A local copy, so that it is exported to the parallel workers
+    get_ells <- ellipsoids_of
     on.exit(plan(oplan), add = TRUE)
     for (paso in pasosChar) {
       x <- as.numeric(paso)
@@ -225,6 +227,7 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
           return(r1)
         })
         results_df <- dplyr::bind_rows(results_L)
+        attr(results_df, "ellipsoids") <- get_ells(results_L)
         cat("Finishing calibration of models ",kkk[x],"to ",kkk[x + 1] - 1,
             "\n\n")
         return(results_df)
@@ -237,6 +240,7 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     cat("-------------------------------------------------------------------\n")
 
 
+    ellipsoids <- do.call(c, unname(lapply(mres, attr, "ellipsoids")))
     rfinal <- dplyr::bind_rows(mres)
 
     future::plan(sequential)
@@ -265,8 +269,10 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
         return(r1)
       })
       results_df <- dplyr::bind_rows(results_L)
+      attr(results_df, "ellipsoids") <- ellipsoids_of(results_L)
       return(results_df)
     })
+    ellipsoids <- do.call(c, unname(lapply(results_L, attr, "ellipsoids")))
     rfinal <- dplyr::bind_rows(results_L)
   }
   # Models whose ellipsoid could not be fitted are kept as "fit_failed"
@@ -337,5 +343,24 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
   rfinal$fit_error <- rep(NA_character_, nrow(rfinal))
   rfinal <- dplyr::bind_rows(rfinal, r_failed)
   rownames(rfinal) <- NULL
+  # Keep the fitted centroid and covariance of the models that pass
+  # omr_criteria for both training and testing data, keyed by fitted_vars.
+  if ("om_rate_test" %in% names(rfinal)) {
+    passed <- rfinal$status %in% "ok" &
+      !is.na(rfinal$om_rate_train) & rfinal$om_rate_train <= omr_criteria &
+      !is.na(rfinal$om_rate_test) & rfinal$om_rate_test <= omr_criteria
+  } else {
+    passed <- rep(FALSE, nrow(rfinal))
+  }
+  attr(rfinal, "ellipsoids") <- ellipsoids[intersect(rfinal$fitted_vars[passed],
+                                                     names(ellipsoids))]
   return(rfinal)
+}
+
+# Named list (by fitted_vars) of the ellipsoids attached by ellipsoid_omr()
+ellipsoids_of <- function(results) {
+  ells <- lapply(results, attr, "ellipsoid")
+  keep <- !vapply(ells, is.null, logical(1))
+  vars <- vapply(results, function(r) as.character(r$fitted_vars[1]), character(1))
+  stats::setNames(ells[keep], vars[keep])
 }

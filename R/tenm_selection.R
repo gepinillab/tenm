@@ -27,7 +27,12 @@
 #' @return An object of class "sp.temporal.selection" containing metadata of
 #' model statistics of the calibrated models, obtainable from the "mods_table"
 #' attribute. The "mve" and "ellipsoid_level" elements store the settings used
-#' to fit the models; \code{predict()} uses them by default. The function
+#' to fit the models. The "ellipsoids" element is a list, named by
+#' "fitted_vars", with the fitted "centroid" and "covariance" of each model
+#' that passed \code{omr_criteria} for both training and testing data; these
+#' are the ellipsoids that were evaluated. \code{predict()} projects a stored
+#' ellipsoid directly instead of refitting it, so repeated predictions are
+#' identical even with \code{mve = TRUE}. The function
 #' internally uses
 #' \code{\link[tenm]{ellipsoid_selection}}
 #' to obtain model statistics. Note that this function inherits attributes
@@ -149,7 +154,9 @@ tenm_selection <- function(this_species,omr_criteria =0.1,
                            env_bg = this_species$env_bg,
                            mods_table = seleccion_mods,
                            mve = mve,
-                           ellipsoid_level = ellipsoid_level)
+                           ellipsoid_level = ellipsoid_level,
+                           ellipsoids = attr(seleccion_mods, "ellipsoids"))
+  attr(sp.temp.data.env$mods_table, "ellipsoids") <- NULL
   class(sp.temp.data.env) <- c("sp.temporal.selection")
   return(sp.temp.data.env)
 }

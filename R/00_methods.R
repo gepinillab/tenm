@@ -12,7 +12,7 @@
 #' @param layers_ext File extension of the raster layers. If \code{NULL}
 #' (the default), the \code{layers_ext} stored in \code{object} is used.
 #' @param mve Logical indicating whether to use the minimum volume
-#' ellipsoid algorithm. If not supplied, the \code{mve} setting stored in
+#' ellipsoid algorithm. Only used when the model is refitted (see Details). If not supplied, the \code{mve} setting stored in
 #' \code{object} by \code{\link[tenm]{tenm_selection}} is used (\code{TRUE}
 #' for objects that do not store it).
 #' @param level Proportion of data to include inside the ellipsoid
@@ -29,6 +29,15 @@
 #' @return A SpatRaster object representing predicted suitability values or
 #' Mahalanobis distances to niche center.
 #' @details
+#' If \code{object} stores the fitted ellipsoid of the requested model (the
+#' "ellipsoids" element set by \code{\link[tenm]{tenm_selection}} for models
+#' that passed \code{omr_criteria}), that centroid and covariance are
+#' projected, so the projection uses exactly the ellipsoid that was
+#' evaluated and repeated calls give identical results. Otherwise (objects
+#' created before the ellipsoids were stored, models that did not pass the
+#' criteria, or \code{mve}/\code{level} different from the settings used in
+#' selection) the model is refitted to the training data.
+#'
 #' This function predicts the potential distribution of a species based on
 #' environmental conditions represented by raster layers. The prediction is
 #' based on the model statistics and environmental variables specified in
@@ -156,8 +165,12 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                      env_data <- object$temporal_df[trian_ids,mod_vars]
                      env_data <- stats::na.omit(env_data)
 
-                     mod <- tenm::cov_center(env_data,mve = mve,
-                                             level = level,vars = mod_vars)
+                     mod <- stored_ellipsoid(object, mod_vars,
+                                             mve = mve, level = level)
+                     if(is.null(mod)){
+                       mod <- tenm::cov_center(env_data,mve = mve,
+                                               level = level,vars = mod_vars)
+                     }
                      #----------------------------------------------------------
 
                      if(methods::is(layers,"SpatRaster")){
@@ -249,3 +262,22 @@ methods::setMethod('predict', signature(object="sp.temporal.selection"),
                      return(projmods)
                    })
 
+
+# The ellipsoid stored by tenm_selection() for the model with variables
+# 'mod_vars' (in that order), or NULL when there is none (objects saved
+# before it was stored, models that did not pass omr_criteria) or when
+# 'mve'/'level' differ from the settings used in selection; predict() then
+# refits the model.
+stored_ellipsoid <- function(object, mod_vars, mve, level) {
+  ells <- object$ellipsoids
+  if (!length(ells)) return(NULL)
+  if (!identical(as.logical(mve), as.logical(object$mve)) ||
+      !isTRUE(all.equal(level, object$ellipsoid_level))) return(NULL)
+  keys <- strsplit(names(ells), ",", fixed = TRUE)
+  hit <- which(vapply(keys, function(k) setequal(k, mod_vars) &&
+                        length(k) == length(mod_vars), logical(1)))
+  if (!length(hit)) return(NULL)
+  e <- ells[[hit[1]]]
+  list(centroid = e$centroid[mod_vars],
+       covariance = e$covariance[mod_vars, mod_vars, drop = FALSE])
+}
