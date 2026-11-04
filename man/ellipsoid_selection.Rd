@@ -49,8 +49,11 @@ matrix of the input data will be used.}
 of the model, should be a sample of the environmental layers of
 the calibration area.}
 
-\item{omr_criteria}{Omission rate criteria: the allowable omission rate for
-the selection process. Default is NULL (see details).}
+\item{omr_criteria}{Omission rate criterion: the maximum omission rate
+allowed for both the training and the testing data. A model passes when
+\code{om_rate_train <= omr_criteria} and \code{om_rate_test <= omr_criteria}.
+It has no default and must be supplied when \code{env_test} and
+\code{env_bg} are given (see Details).}
 
 \item{parallel}{Logical. If \code{TRUE}, computations will run in parallel.
 Default is \code{F}.}
@@ -88,10 +91,11 @@ A data.frame with the following columns:
 \item "env_bg_paucratio": Environmental partial AUC ratio value.
 \item "env_bg_auc": Environmental AUC value.
 \item "mean_omr_train_test": Mean value of omission rates (train and test).
-\item "rank_by_omr_train_test": Rank value of importance in model selection
-by omission rate.
-\item "rank_omr_aucratio": Rank value by AUC ratio (when \code{proc} is
-\code{TRUE}).
+\item "rank_by_omr_train_test": Rank by mean omission rate (ties broken by
+background prevalence), before the \code{omr_criteria} filter.
+\item "rank_omr_aucratio": Final rank (when \code{proc} is \code{TRUE}):
+models passing \code{omr_criteria} ordered by partial AUC ratio,
+then the other models by mean omission rate.
 \item "status": "ok", or "fit_failed" for models whose ellipsoid could not
 be fitted (e.g. singular covariance matrix). Failed models are listed
 after the ranked models, with \code{NA} metrics and ranks.
@@ -100,19 +104,49 @@ after the ranked models, with \code{NA} metrics and ranks.
 }
 }
 \description{
-The function performs model selection for ellipsoid models
-using three criteria: a) the omission rate, b) the significance of partial
-ROC and binomial tests and c) the AUC value.
+The function fits an ellipsoid model for every combination of
+environmental variables, computes its omission rates on training and
+testing data, and ranks the models. Models are filtered on the training
+and testing omission rates against \code{omr_criteria}; the models that
+pass are listed first. Binomial and partial ROC p-values and the AUC are
+reported but are not used to filter or rank models (see Details).
 }
 \details{
 Model selection occurs in environmental space (E-space). For each variable
-combination specified in nvarstest, the omission rate (omr) in E-space is
-computed using \code{\link[tenm]{inEllipsoid}} function.
-Results are ordered by omr of the testing data. A model with no testing
-records has an \code{NA} testing omission rate and is ranked after the
-models with testing data. If env_bg is provided,
-an estimated prevalence is computed and results are additionally ordered
-by partial AUC. Model selection can be run in parallel.
+combination specified in nvarstest, an ellipsoid is fitted to the training
+data (\code{\link[tenm]{cov_center}}) and the omission rates (omr) of the
+training and testing data are computed with
+\code{\link[tenm]{inEllipsoid}}. With \code{env_bg}, the background
+prevalence (proportion of background points inside the ellipsoid) and the
+binomial test are computed, and, with \code{proc = TRUE}, the partial ROC
+test (\code{\link[tenm]{pROC}}).
+
+When both testing data and \code{env_bg} are given, models are ranked as
+follows:
+\enumerate{
+\item All models are ordered by the mean of the training and testing
+omission rates (\code{mean_omr_train_test}), with ties broken by the
+lower background prevalence; \code{rank_by_omr_train_test} gives this
+order.
+\item Models whose training and testing omission rates are both
+\code{<= omr_criteria} pass the filter and are moved to the top. With
+\code{proc = TRUE}, the passing models are ordered by decreasing
+partial ROC AUC ratio (\code{env_bg_paucratio}); otherwise they keep
+the order of step 1. The models that do not pass follow in the order
+of step 1. If no model passes, the order of step 1 is kept and a
+note is printed.
+\item With \code{proc = TRUE}, \code{rank_omr_aucratio} gives the final
+order.
+}
+
+The p-values (\code{pval_bin}, \code{pval_proc}) and the AUC
+(\code{env_bg_auc}) are reported for each model but are not used to
+filter or rank models; the partial AUC ratio is only used to order the
+models that pass the omission filter. A model with no testing records has
+an \code{NA} testing omission rate, never passes, and is ranked after the
+models with testing data. Without testing data or \code{env_bg}, models
+are only ordered by training omission rate and \code{omr_criteria} is not
+used. Model selection can be run in parallel.
 For more details and examples go to \code{\link[tenm]{ellipsoid_omr}} help.
 }
 \examples{

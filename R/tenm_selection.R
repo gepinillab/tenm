@@ -1,12 +1,19 @@
 #' Function to find the best n-dimensional ellipsoid model
 #' @description
 #' Finds the best n-dimensional ellipsoid model using a model
-#' calibration and selection protocol for ellipsoid models.
+#' calibration and selection protocol for ellipsoid models. Ellipsoids are
+#' fitted to the training records for every combination of
+#' \code{vars2fit}; models whose training and testing omission rates are both
+#' \code{<= omr_criteria} pass, and are ranked first (by partial ROC AUC
+#' ratio when \code{proc = TRUE}). Models are not filtered on p-values or
+#' AUC. See \code{\link[tenm]{ellipsoid_selection}} for the full ranking rules.
 #' @param this_species An object of class sp.temporal.env representing species
 #' occurrence data organized by date. See \code{\link[tenm]{ex_by_date}}.
 #' @param vars2fit A vector of variable names to use in building the models.
-#' @param omr_criteria Omission rate criterion used to select the best models.
-#'   See \code{\link[tenm]{ellipsoid_selection}} for details
+#' @param omr_criteria Omission rate criterion: the maximum omission rate
+#'   allowed for both the training and the testing records. Models that meet
+#'   it for both are ranked first. See \code{\link[tenm]{ellipsoid_selection}}
+#'   for details.
 #' @param ellipsoid_level Proportion of points to include inside the ellipsoid.
 #' @param nvars_to_fit Number of variables used to build the models.
 #' @param mve Logical. If \code{TRUE}, a minimum volume ellipsoid will be computed.
