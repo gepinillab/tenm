@@ -41,7 +41,8 @@ Defaults to NULL.}
 \item{level}{Numeric value indicating the proportion of points to be
 included inside the ellipsoid model.}
 
-\item{col}{Plot color}
+\item{col}{Colour of the ellipsoid. The default, \code{NULL}, uses
+\code{grDevices::hcl.colors(1, "viridis")}.}
 
 \item{lwd_axes}{Line width for ellipsoid semi-axes.}
 

@@ -25,8 +25,10 @@ tenm_selection(
 \item{this_species}{An object of class sp.temporal.env representing species
 occurrence data organized by date. See \code{\link[tenm]{ex_by_date}}.}
 
-\item{omr_criteria}{Omission rate criterion used to select the best models.
-See \code{\link[tenm]{ellipsoid_selection}} for details}
+\item{omr_criteria}{Omission rate criterion: the maximum omission rate
+allowed for both the training and the testing records. Models that meet
+it for both are ranked first. See \code{\link[tenm]{ellipsoid_selection}}
+for details.}
 
 \item{ellipsoid_level}{Proportion of points to include inside the ellipsoid.}
 
@@ -62,7 +64,12 @@ for the partial ROC test. Default is 5. See \code{\link[tenm]{pROC}}.}
 An object of class "sp.temporal.selection" containing metadata of
 model statistics of the calibrated models, obtainable from the "mods_table"
 attribute. The "mve" and "ellipsoid_level" elements store the settings used
-to fit the models; \code{predict()} uses them by default. The function
+to fit the models. The "ellipsoids" element is a list, named by
+"fitted_vars", with the fitted "centroid" and "covariance" of each model
+that passed \code{omr_criteria} for both training and testing data; these
+are the ellipsoids that were evaluated. \code{predict()} projects a stored
+ellipsoid directly instead of refitting it, so repeated predictions are
+identical even with \code{mve = TRUE}. The function
 internally uses
 \code{\link[tenm]{ellipsoid_selection}}
 to obtain model statistics. Note that this function inherits attributes
@@ -74,7 +81,12 @@ information from these classes can be extracted from this object.
 }
 \description{
 Finds the best n-dimensional ellipsoid model using a model
-calibration and selection protocol for ellipsoid models.
+calibration and selection protocol for ellipsoid models. Ellipsoids are
+fitted to the training records for every combination of
+\code{vars2fit}; models whose training and testing omission rates are both
+\code{<= omr_criteria} pass, and are ranked first (by partial ROC AUC
+ratio when \code{proc = TRUE}). Models are not filtered on p-values or
+AUC. See \code{\link[tenm]{ellipsoid_selection}} for the full ranking rules.
 }
 \examples{
 \donttest{
@@ -96,7 +108,7 @@ abex <- tenm::ex_by_date(this_species = abtc,
 abbg <- tenm::bg_by_date(abex,
                          buffer_ngbs=10,n_bg=50000)
 future::plan("sequential")
-varcorrs <- tenm::correlation_finder(environmental_data = abex$env_data[,-ncol(abex$env_data)],
+varcorrs <- tenm::correlation_finder(environmental_data = abex$env_data,
                                      method = "spearman",
                                      threshold = 0.8,
                                      verbose = FALSE)

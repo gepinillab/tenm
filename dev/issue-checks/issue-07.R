@@ -31,14 +31,14 @@ for (i in seq_along(folders)) {
 }
 occs <- data.frame(lon = c(10.5, 15.5, 20.5, 12.5), lat = c(10.5, 15.5, 20.5, 22.5),
                    date = c("1939", "1939", "1940", "1940"))
-st <- sp_temporal_data(occs = occs, longitude = "lon", latitude = "lat",
-                       sp_date_var = "date", occ_date_format = "y",
-                       layers_date_format = "y", layers_by_date_dir = root,
-                       layers_ext = "*.tif$")
-
 set.seed(7)
 err <- NULL
 bg <- tryCatch({
+  # Since #25, sp_temporal_data() may already reject the differing grid
+  st <- sp_temporal_data(occs = occs, longitude = "lon", latitude = "lat",
+                         sp_date_var = "date", occ_date_format = "y",
+                         layers_date_format = "y", layers_by_date_dir = root,
+                         layers_ext = "*.tif$")
   ex <- suppressMessages(ex_by_date(st, train_prop = 0.7))
   suppressMessages(bg_by_date(ex, buffer_ngbs = 2, n_bg = 40))
 }, error = function(e) {

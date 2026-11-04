@@ -35,7 +35,7 @@ SpatRaster.}
 (the default), the \code{layers_ext} stored in \code{object} is used.}
 
 \item{mve}{Logical indicating whether to use the minimum volume
-ellipsoid algorithm. If not supplied, the \code{mve} setting stored in
+ellipsoid algorithm. Only used when the model is refitted (see Details). If not supplied, the \code{mve} setting stored in
 \code{object} by \code{\link[tenm]{tenm_selection}} is used (\code{TRUE}
 for objects that do not store it).}
 
@@ -63,6 +63,15 @@ Predict the potential distribution of species based on environmental
 conditions
 }
 \details{
+If \code{object} stores the fitted ellipsoid of the requested model (the
+"ellipsoids" element set by \code{\link[tenm]{tenm_selection}} for models
+that passed \code{omr_criteria}), that centroid and covariance are
+projected, so the projection uses exactly the ellipsoid that was
+evaluated and repeated calls give identical results. Otherwise (objects
+created before the ellipsoids were stored, models that did not pass the
+criteria, or \code{mve}/\code{level} different from the settings used in
+selection) the model is refitted to the training data.
+
 This function predicts the potential distribution of a species based on
 environmental conditions represented by raster layers. The prediction is
 based on the model statistics and environmental variables specified in
@@ -98,7 +107,7 @@ abbg <- tenm::bg_by_date(this_species = abex,
                          buffer_ngbs=10,n_bg=50000)
 future::plan("sequential")
 varcorrs <- tenm::correlation_finder(environmental_data =
-                                       abex$env_data[,-ncol(abex$env_data)],
+                                       abex$env_data,
                                      method = "spearman",
                                      threshold = 0.8,
                                      verbose = FALSE)

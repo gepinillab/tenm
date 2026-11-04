@@ -1,3 +1,77 @@
+# tenm 0.5.1.9004
+
+## Breaking changes
+
+* `sp_temporal_data()` now floors each occurrence date to the unit of the
+  layer folders (the year for `"y"` folders, the month for `"ym"`/`"my"`, the
+  day otherwise) and matches it exactly. The new argument
+  `on_unmatched = c("drop", "nearest", "error")` sets what happens to records
+  with no folder for their date. The default, `"drop"`, removes them; before,
+  they were silently matched to the nearest folder date, which is still
+  available with `on_unmatched = "nearest"`. A message reports how many
+  records were dropped or moved, and their dates. As a result,
+  `clean_dup_by_date()` only compares records of the same layer date. Every
+  year of the bundled `abronia` data has its own folder, so its results do
+  not change (#23).
+
+* `ex_by_date()`: `env_data` now holds only the environmental variables; the
+  `trian_test` label stays in `temporal_df`. Code that dropped the last
+  column (`abex$env_data[, -ncol(abex$env_data)]`, as in earlier examples)
+  must now use `abex$env_data`, and code that read `env_data$trian_test`
+  must use `temporal_df$trian_test`. The object also stores the names of the
+  variables in `env_vars` (#28).
+
+* `rgl` moved from Imports to Suggests. 3-D plots in `plot_ellipsoid()` and
+  `ellipsoid_projection(plot = TRUE)` need it and stop with a clear message
+  when it is not installed; everything else works without it (#38).
+
+## Bug fixes
+
+* `tenm_selection()` now stores, in the new `ellipsoids` element, the fitted
+  centroid and covariance of each model that passes `omr_criteria` for
+  training and testing data. `predict()` projects the stored ellipsoid
+  instead of refitting it, so it uses exactly the ellipsoid that was
+  evaluated and repeated calls give identical results with `mve = TRUE`.
+  Objects created before this change, models that did not pass, and an
+  explicit `mve` or `level` different from selection fall back to a refit
+  (#24).
+
+* `sp_temporal_data()` now stops when a layer in the date folders has a
+  different extent, resolution or CRS from the first one. Before, this was
+  only caught later by `ex_by_date()` (#25).
+
+* `ex_by_date()`, `tdf2swd()` and `bg_by_date()` select columns by name
+  instead of position. `tdf2swd()` now always returns `sp_name`, the
+  coordinates, the date and the environmental variables in that order, even
+  when `temporal_df` columns were reordered or extended, and takes the
+  background `year` from each folder's layer date (before, it was `NA` for
+  folder names such as `"1939-06"`) (#28).
+
+* The parallel branch of `ellipsoid_selection()` (more than 100 models) now
+  restores the `future.rng.onMisuse` and `future.globals.maxSize` options on
+  exit. `pROC()` already restored the RNG state (#13) (#36).
+
+* `plot_ellipsoid()` no longer picks its default colour at random (which
+  also advanced the user's RNG): it uses `grDevices::hcl.colors(1,
+  "viridis")`. `ellipsoid_projection()` has a new `col` argument (default
+  `grDevices::hcl.colors(100, "viridis")`) that colours the 2-D surface and
+  the 3-D points by suitability, replacing the fixed blue surface and the
+  rainbow scale, and large 3-D plots are subsampled without the RNG (#53).
+
+## Documentation
+
+* The help pages of `sp_temporal_data()`, `clean_dup()` and
+  `clean_dup_by_date()` now state that occurrence coordinates must be in the
+  CRS of the layers (they are not reprojected), and that `threshold` is in
+  coordinate units (degrees for lon/lat layers), not metres. Support for
+  other CRSs and metre thresholds is tracked in #52 (#25).
+
+* The help pages of `ellipsoid_selection()` and `tenm_selection()` now
+  describe the actual selection: models are filtered on the training and
+  testing omission rates against `omr_criteria`, and ranked by mean omission
+  rate, with passing models first (ordered by partial AUC ratio when
+  `proc = TRUE`). p-values and AUC are reported but not used to filter.
+
 # tenm 0.5.1.9003
 
 ## Bug fixes

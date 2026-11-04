@@ -1,9 +1,12 @@
 #' ellipsoid_selection: Performs models selection for ellipsoid models
 #'
 #' @description
-#' The function performs model selection for ellipsoid models
-#' using three criteria: a) the omission rate, b) the significance of partial
-#' ROC and binomial tests and c) the AUC value.
+#' The function fits an ellipsoid model for every combination of
+#' environmental variables, computes its omission rates on training and
+#' testing data, and ranks the models. Models are filtered on the training
+#' and testing omission rates against \code{omr_criteria}; the models that
+#' pass are listed first. Binomial and partial ROC p-values and the AUC are
+#' reported but are not used to filter or rank models (see Details).
 #'
 #' @param env_train A data frame with the environmental training data.
 #' @param env_test A data frame with the environmental testing data.
@@ -18,8 +21,11 @@
 #' @param mve Logical. If \code{TRUE}, a minimum volume ellipsoid will be computed.
 #' using \code{\link[MASS]{cov.rob}} from \pkg{MASS}. If \code{FALSE}, the covariance
 #' matrix of the input data will be used.
-#' @param omr_criteria Omission rate criteria: the allowable omission rate for
-#' the selection process. Default is NULL (see details).
+#' @param omr_criteria Omission rate criterion: the maximum omission rate
+#' allowed for both the training and the testing data. A model passes when
+#' \code{om_rate_train <= omr_criteria} and \code{om_rate_test <= omr_criteria}.
+#' It has no default and must be supplied when \code{env_test} and
+#' \code{env_bg} are given (see Details).
 #' @param env_bg Environmental data to compute the approximated prevalence
 #' of the model, should be a sample of the environmental layers of
 #' the calibration area.
@@ -50,10 +56,11 @@
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
 #'   - "mean_omr_train_test": Mean value of omission rates (train and test).
-#'   - "rank_by_omr_train_test": Rank value of importance in model selection
-#'     by omission rate.
-#'   - "rank_omr_aucratio": Rank value by AUC ratio (when \code{proc} is
-#'     \code{TRUE}).
+#'   - "rank_by_omr_train_test": Rank by mean omission rate (ties broken by
+#'     background prevalence), before the \code{omr_criteria} filter.
+#'   - "rank_omr_aucratio": Final rank (when \code{proc} is \code{TRUE}):
+#'     models passing \code{omr_criteria} ordered by partial AUC ratio,
+#'     then the other models by mean omission rate.
 #'   - "status": "ok", or "fit_failed" for models whose ellipsoid could not
 #'     be fitted (e.g. singular covariance matrix). Failed models are listed
 #'     after the ranked models, with \code{NA} metrics and ranks.
@@ -61,13 +68,38 @@
 #'     \code{NA}.
 #' @details
 #' Model selection occurs in environmental space (E-space). For each variable
-#' combination specified in nvarstest, the omission rate (omr) in E-space is
-#' computed using \code{\link[tenm]{inEllipsoid}} function.
-#' Results are ordered by omr of the testing data. A model with no testing
-#' records has an \code{NA} testing omission rate and is ranked after the
-#' models with testing data. If env_bg is provided,
-#' an estimated prevalence is computed and results are additionally ordered
-#' by partial AUC. Model selection can be run in parallel.
+#' combination specified in nvarstest, an ellipsoid is fitted to the training
+#' data (\code{\link[tenm]{cov_center}}) and the omission rates (omr) of the
+#' training and testing data are computed with
+#' \code{\link[tenm]{inEllipsoid}}. With \code{env_bg}, the background
+#' prevalence (proportion of background points inside the ellipsoid) and the
+#' binomial test are computed, and, with \code{proc = TRUE}, the partial ROC
+#' test (\code{\link[tenm]{pROC}}).
+#'
+#' When both testing data and \code{env_bg} are given, models are ranked as
+#' follows:
+#'   1. All models are ordered by the mean of the training and testing
+#'      omission rates (\code{mean_omr_train_test}), with ties broken by the
+#'      lower background prevalence; \code{rank_by_omr_train_test} gives this
+#'      order.
+#'   2. Models whose training and testing omission rates are both
+#'      \code{<= omr_criteria} pass the filter and are moved to the top. With
+#'      \code{proc = TRUE}, the passing models are ordered by decreasing
+#'      partial ROC AUC ratio (\code{env_bg_paucratio}); otherwise they keep
+#'      the order of step 1. The models that do not pass follow in the order
+#'      of step 1. If no model passes, the order of step 1 is kept and a
+#'      note is printed.
+#'   3. With \code{proc = TRUE}, \code{rank_omr_aucratio} gives the final
+#'      order.
+#'
+#' The p-values (\code{pval_bin}, \code{pval_proc}) and the AUC
+#' (\code{env_bg_auc}) are reported for each model but are not used to
+#' filter or rank models; the partial AUC ratio is only used to order the
+#' models that pass the omission filter. A model with no testing records has
+#' an \code{NA} testing omission rate, never passes, and is ranked after the
+#' models with testing data. Without testing data or \code{env_bg}, models
+#' are only ordered by training omission rate and \code{omr_criteria} is not
+#' used. Model selection can be run in parallel.
 #' For more details and examples go to \code{\link[tenm]{ellipsoid_omr}} help.
 #' @export
 #' @import future
@@ -96,11 +128,11 @@
 #'                          buffer_ngbs=10,n_bg=50000)
 #' future::plan("sequential")
 #' varcorrs <- tenm::correlation_finder(environmental_data =
-#'                                      abex$env_data[,-ncol(abex$env_data)],
+#'                                      abex$env_data,
 #'                                      method = "spearman",
 #'                                      threshold = 0.8,
 #'                                      verbose = FALSE)
-#' edata <- abex$env_data
+#' edata <- abex$temporal_df
 #' etrain <- edata[edata$trian_test=="Train",] |> data.frame()
 #' etest <- edata[edata$trian_test=="Test",] |> data.frame()
 #' bg <- abbg$env_bg
@@ -143,7 +175,10 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
   cat("-------------------------------------------------------------------\n")
 
   if(nmodels >100 && parallel){
-    options(future.rng.onMisuse="ignore")
+    # Restore the caller's options on exit
+    old_opts <- options(future.rng.onMisuse = "ignore",
+                        future.globals.maxSize = 8500*1024^2)
+    on.exit(options(old_opts), add = TRUE)
     max_var <- max(nvarstest)
     cvars <- lapply(nvarstest, function(x) {
 
@@ -188,8 +223,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     #                     packages = c("tenm"))
     oplan <- plan(tweak(multisession, workers = n_cores))
     #plan(multisession,workers=n_cores)
-    options(future.globals.maxSize= 8500*1024^2)
     model_select <- new.env()
+    # A local copy, so that it is exported to the parallel workers
+    get_ells <- ellipsoids_of
     on.exit(plan(oplan), add = TRUE)
     for (paso in pasosChar) {
       x <- as.numeric(paso)
@@ -225,6 +261,7 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
           return(r1)
         })
         results_df <- dplyr::bind_rows(results_L)
+        attr(results_df, "ellipsoids") <- get_ells(results_L)
         cat("Finishing calibration of models ",kkk[x],"to ",kkk[x + 1] - 1,
             "\n\n")
         return(results_df)
@@ -237,6 +274,7 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     cat("-------------------------------------------------------------------\n")
 
 
+    ellipsoids <- do.call(c, unname(lapply(mres, attr, "ellipsoids")))
     rfinal <- dplyr::bind_rows(mres)
 
     future::plan(sequential)
@@ -265,8 +303,10 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
         return(r1)
       })
       results_df <- dplyr::bind_rows(results_L)
+      attr(results_df, "ellipsoids") <- ellipsoids_of(results_L)
       return(results_df)
     })
+    ellipsoids <- do.call(c, unname(lapply(results_L, attr, "ellipsoids")))
     rfinal <- dplyr::bind_rows(results_L)
   }
   # Models whose ellipsoid could not be fitted are kept as "fit_failed"
@@ -337,5 +377,24 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
   rfinal$fit_error <- rep(NA_character_, nrow(rfinal))
   rfinal <- dplyr::bind_rows(rfinal, r_failed)
   rownames(rfinal) <- NULL
+  # Keep the fitted centroid and covariance of the models that pass
+  # omr_criteria for both training and testing data, keyed by fitted_vars.
+  if ("om_rate_test" %in% names(rfinal)) {
+    passed <- rfinal$status %in% "ok" &
+      !is.na(rfinal$om_rate_train) & rfinal$om_rate_train <= omr_criteria &
+      !is.na(rfinal$om_rate_test) & rfinal$om_rate_test <= omr_criteria
+  } else {
+    passed <- rep(FALSE, nrow(rfinal))
+  }
+  attr(rfinal, "ellipsoids") <- ellipsoids[intersect(rfinal$fitted_vars[passed],
+                                                     names(ellipsoids))]
   return(rfinal)
+}
+
+# Named list (by fitted_vars) of the ellipsoids attached by ellipsoid_omr()
+ellipsoids_of <- function(results) {
+  ells <- lapply(results, attr, "ellipsoid")
+  keep <- !vapply(ells, is.null, logical(1))
+  vars <- vapply(results, function(r) as.character(r$fitted_vars[1]), character(1))
+  stats::setNames(ells[keep], vars[keep])
 }

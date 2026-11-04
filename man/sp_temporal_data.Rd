@@ -12,16 +12,19 @@ sp_temporal_data(
   occ_date_format = "y",
   layers_date_format = "y",
   layers_by_date_dir,
-  layers_ext = "*.tif$"
+  layers_ext = "*.tif$",
+  on_unmatched = c("drop", "nearest", "error")
 )
 }
 \arguments{
 \item{occs}{A data.frame (or tibble) with information about occurrence records of the
 species being modeled.}
 
-\item{longitude}{Name of the variable in 'occs' containing longitude data.}
+\item{longitude}{Name of the variable in 'occs' containing longitude data
+(the x coordinate, in the CRS of the layers; see Details).}
 
-\item{latitude}{Name of the variable in 'occs' containing latitude data.}
+\item{latitude}{Name of the variable in 'occs' containing latitude data
+(the y coordinate, in the CRS of the layers; see Details).}
 
 \item{sp_date_var}{Name of the date variable.}
 
@@ -36,6 +39,11 @@ with raster layers of environmental information.}
 
 \item{layers_ext}{Extension or path of each raster layer archive
 (e.g., ".tif").}
+
+\item{on_unmatched}{What to do with records whose date, floored to the
+unit of the layer folders, has no layer folder: \code{"drop"} (default)
+removes them, \code{"nearest"} matches them to the nearest layer date, and
+\code{"error"} stops. See Details.}
 }
 \value{
 Returns a  sp.temporal.modeling object (list) with the coordinates
@@ -66,15 +74,30 @@ for example year/month/day ("ymd"), year/month ("ym"), just year ("y") or
 some other arrangement like month/year ("my"), month/year/day ("myd"),
 day/month/year ("dmy").
 
-Each record is matched to the folder with the nearest date. A message
-reports how many records have no folder of the same date, and a warning
-reports records outside the range of folder dates. Records whose date is
-missing or cannot be read are removed with a warning.
+Each occurrence date is floored to the unit of the layer folders (the
+year for \code{"y"} folders, the month for \code{"ym"} and \code{"my"},
+the day otherwise; e.g. \code{"1975-06-15"} becomes 1975 for \code{"y"}
+folders) and matched exactly to a folder date. \code{on_unmatched} sets
+what happens to records with no folder for their date: \code{"drop"}
+(default) removes them, \code{"nearest"} matches them to the folder with
+the nearest date (the behaviour of earlier versions) and \code{"error"}
+stops. A message reports how many records were dropped or moved, and
+their dates (and, for \code{"nearest"}, the folder date each was moved
+to); with \code{"nearest"}, a warning also counts records outside the
+range of folder dates. Records whose date is missing or cannot be read are
+removed with a warning. Because each record keeps only the layer folder of
+its own date, \code{\link[tenm]{clean_dup_by_date}} never compares records
+from different dates (unless \code{on_unmatched = "nearest"} moved them to
+the same folder).
 
-The date folders used must all contain the same layer files. A warning is
-given when the layers have no CRS, or when records fall outside the extent
-of the layers (usually because the coordinates and the layers use
-different CRSs; occurrence coordinates are not reprojected).
+Occurrence coordinates must be in the coordinate reference system (CRS)
+of the layers; they are never reprojected. For lon/lat layers (e.g.
+EPSG:4326) give longitude and latitude in decimal degrees; for projected
+layers, give x and y in the layers' units. The date folders used must all
+contain the same layer files, with the same extent, resolution and CRS;
+otherwise \code{sp_temporal_data()} stops. A warning is given when the
+layers have no CRS, or when records fall outside the extent of the layers
+(usually because the coordinates are not in the layers' CRS).
 }
 \examples{
 library(tenm)

@@ -1,5 +1,5 @@
 Package: tenm
-Version: 0.5.1.9003
+Version: 0.5.1.9004
 Title: Temporal Ecological Niche Models
 Authors@R: c(
   person(given = "Luis", family = "Osorio-Olvera", 
@@ -55,7 +55,6 @@ Imports:
     purrr,
     dplyr,
     stringr,
-    rgl (> 1.2),
     future,
     tidyr,
     furrr,
@@ -68,6 +67,7 @@ Depends:
 LazyData: true
 Suggests: 
     knitr,
+    rgl (> 1.2),
     rmarkdown,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr

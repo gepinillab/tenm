@@ -8,7 +8,7 @@
 #' For example, a train_prop of 0.7 means 70% of the data will be used for
 #' training and 30% for testing.
 #' @importFrom future plan tweak sequential
-#' @return An object of class sp.temporal.env that consists in a list of five
+#' @return An object of class sp.temporal.env that consists in a list of six
 #' elements:
 #' 1) "temporal_df": a temporal data.frame (temporal_df) with the following
 #'    columns: latitude, longitude, year, layer_dates, layers_path,
@@ -16,7 +16,10 @@
 #' 2) "sp_date_var": Name of date variable.
 #' 3) "lon_lat_vars": Names of the longitude and latitude variables.
 #' 4) "layers_ext": Environmental layers extension.
-#' 5) "env_data": Environmental data of occurrences.
+#' 5) "env_data": Environmental data of occurrences: one column per
+#'    environmental variable (the \code{trian_test} label is in
+#'    "temporal_df", not here).
+#' 6) "env_vars": Names of the environmental variables.
 #' @export
 #' @examples
 #' \donttest{
@@ -90,7 +93,8 @@ ex_by_date <- function(this_species,train_prop=0.7){
     snam <- eval(parse(text = paste0(snam,"$get_sourcenames()")))
     layer_val <- terra::extract(env_layers,
                                 time_obs[,this_species$lon_lat_vars])
-    df1 <- data.frame(time_obs[,c(1:6)],
+    # Keep the record columns by name (not position); .row is added below
+    df1 <- data.frame(time_obs[, setdiff(names(time_obs), ".row"), drop = FALSE],
                       .row = time_obs$.row,
                       layer_val = layer_val[[2]],
                       var_name = snam)
@@ -123,11 +127,14 @@ ex_by_date <- function(this_species,train_prop=0.7){
 
   #train_data <- which(years_env$trian_test=="Train")
 
+  # Environmental variables: the extracted layers, by name
+  env_vars <- setdiff(names(years_env), c(names(tdf), "trian_test"))
   sp.temp.data.env <- list(temporal_df = years_env,
                            sp_date_var = this_species$sp_date_var,
                            lon_lat_vars =this_species$lon_lat_vars ,
                            layers_ext= this_species$layers_ext,
-                           env_data = years_env[,-(1:6)]
+                           env_data = years_env[, env_vars, drop = FALSE],
+                           env_vars = env_vars
                            )
   class(sp.temp.data.env) <- c("sp.temporal.env")
 

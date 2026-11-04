@@ -1,8 +1,9 @@
 # Internal: check the date folders used by an sp.temporal.modeling object.
 # Stops when a folder has no layers or lacks a layer found in the first
 # folder; warns when the layers have no CRS or when occurrences fall outside
-# the layers' extent (usually a CRS mismatch). Grids that differ across
-# folders are rejected later by ex_by_date().
+# the layers' extent (usually a CRS mismatch). Stops when a layer's grid
+# (extent, resolution, CRS) differs from the first layer. Occurrence
+# coordinates are never reprojected: they must use the layers' CRS.
 validate_layers <- function(layers_path, layers_ext, xy){
   folders <- unique(layers_path)
   files <- lapply(folders, function(f){
@@ -28,6 +29,18 @@ validate_layers <- function(layers_path, layers_ext, xy){
          paste(utils::head(detail, 10), collapse = "\n  "), call. = FALSE)
   }
   r1 <- terra::rast(files[[1]][1])
+  # Every layer must share the grid (extent, rows/columns, resolution and
+  # CRS) of the first layer of the first folder.
+  all_files <- unlist(files, use.names = FALSE)
+  same_geom <- vapply(all_files[-1], function(x){
+    isTRUE(tryCatch(terra::compareGeom(r1, terra::rast(x)),
+                    error = function(e) FALSE))
+  }, logical(1))
+  if(!all(same_geom))
+    stop("All layers in the date folders must share the extent, resolution ",
+         "and CRS of '", all_files[1], "'. These differ:\n  ",
+         paste(utils::head(all_files[-1][!same_geom], 10), collapse = "\n  "),
+         call. = FALSE)
   no_crs <- vapply(files, function(x) !nzchar(terra::crs(terra::rast(x[1]))),
                    logical(1))
   if(any(no_crs))

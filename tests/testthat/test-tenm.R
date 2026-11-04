@@ -254,21 +254,26 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
 
   # ----------------------------------------------------------------------------
   # Test for plot_ellipsoid
-  edata <- abex$env_data
+  edata <- abex$temporal_df
   etrain <- edata[edata$trian_test=="Train",c("bio_05","bio_06","bio_12")]
   etest <- edata[edata$trian_test=="Test",c("bio_05","bio_06","bio_12")]
-  rgl::open3d()
-  p1 <- tenm::plot_ellipsoid(x = etrain$bio_05,
-                             y=etrain$bio_06, z=etrain$bio_12 ,
-                             semiaxes= FALSE)
-  p2 <- tenm::plot_ellipsoid(x =etest$bio_05,
-                             y=etest$bio_06,
-                             z=etest$bio_12 ,
-                             semiaxes= TRUE,add=TRUE)
   p3 <- tenm::plot_ellipsoid(x = etrain$bio_05,
                              y=etrain$bio_06, z=NULL ,
                              semiaxes= TRUE)
-  testthat::expect_equal(class(p2)[1],expected = "rglLowlevel")
+  # 3-D plots need the suggested package rgl
+  if (requireNamespace("rgl", quietly = TRUE)) {
+    op_rgl <- options(rgl.useNULL = TRUE)  # works without a display
+    rgl::open3d()
+    p1 <- tenm::plot_ellipsoid(x = etrain$bio_05,
+                               y=etrain$bio_06, z=etrain$bio_12 ,
+                               semiaxes= FALSE)
+    p2 <- tenm::plot_ellipsoid(x =etest$bio_05,
+                               y=etest$bio_06,
+                               z=etest$bio_12 ,
+                               semiaxes= TRUE,add=TRUE)
+    testthat::expect_equal(class(p2)[1],expected = "rglLowlevel")
+    options(op_rgl)
+  }
   # ----------------------------------------------------------------------------
   # Test for ellipsoid_omr
   bg <- abbg$env_bg[,c("bio_05","bio_06","bio_12")]
@@ -280,8 +285,7 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
   bio15_id <- which(names(abex$env_data) == "bio_15")
 
   varcorrs <- tenm::correlation_finder(environmental_data =
-                                         abex$env_data[,-c(ncol(abex$env_data),
-                                                           bio15_id)],
+                                         abex$env_data[,-bio15_id],
                                        method = "spearman",
                                        threshold = 0.8,
                                        verbose = FALSE)
@@ -289,7 +293,7 @@ testthat::test_that("tests for tdf2swd, cov_center, inEllipsoid, ellipsoid_omr,
                                                   method = "spearman",
                                                   threshold = 0.8,
                                                   verbose = FALSE))
-  edata <- abex$env_data
+  edata <- abex$temporal_df
 
   etrain <- edata[edata$trian_test=="Train",] |> data.frame()
   etest <- edata[edata$trian_test=="Test",] |> data.frame()

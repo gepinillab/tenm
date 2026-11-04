@@ -182,8 +182,8 @@ testthat::test_that("#7: ex_by_date() rejects layers that do not share one grid"
   }
   # 1940 layers cropped by 3 columns: same CRS and resolution, other extent
   cropped <- make_year_layers(c("1939", "1940"), crop_folder = "1940")
-  testthat::expect_error(tenm::ex_by_date(make_st(cropped), train_prop = 0.7),
-                         "same extent, resolution and CRS")
+  # Since #25, sp_temporal_data() rejects it before ex_by_date()
+  testthat::expect_error(make_st(cropped), "share the extent, resolution and CRS")
   # Matching grids still work
   same <- make_year_layers(c("1939", "1940"))
   testthat::expect_s3_class(tenm::ex_by_date(make_st(same), train_prop = 0.7),
@@ -537,7 +537,8 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
   occ <- data.frame(lon = 5.5, lat = 5.5, year = c(1945, 1939, 1890, 2050, 2016, NA))
   msgs <- character()
   st <- withCallingHandlers(
-    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root,
+                           on_unmatched = "nearest"),
     message = function(m) {
       msgs <<- c(msgs, conditionMessage(m))
       invokeRestart("muffleMessage")
@@ -557,7 +558,7 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
   occ_d <- data.frame(lon = 5.5, lat = 5.5, date = c("2016-11-30", "2017-02-01"))
   testthat::expect_warning(
     suppressMessages(tenm::sp_temporal_data(occ_d, "lon", "lat", "date", "ymd", "y",
-                                            lyr$root)),
+                                            lyr$root, on_unmatched = "nearest")),
     "^1 record\\(s\\) are outside the range of layer dates \\(1939-01-01 to 2016-12-31\\)")
   testthat::expect_error(
     suppressWarnings(tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "dmy",
@@ -682,4 +683,214 @@ testthat::test_that("#19: cov_center() uses all columns by default and explains 
   testthat::expect_error(tenm::cov_center(d, mve = FALSE, level = 0.975), "missing values")
   testthat::expect_error(tenm::cov_center(d[1:2, ], mve = FALSE, level = 0.975),
                          "more records")
+})
+
+testthat::test_that("#24: tenm_selection() stores the evaluated ellipsoids and predict() uses them", {
+  dir70 <- system.file("extdata/bio_1970_2000", package = "tenm")
+  lyr <- terra::rast(file.path(dir70, c("bio_01.tif", "bio_12.tif")))
+  names(lyr) <- c("bio_01", "bio_12")
+  v <- terra::values(lyr)
+  ok_rows <- stats::complete.cases(v)
+  rng <- apply(v[ok_rows, ], 2, range)
+  set.seed(241)
+  tdf <- data.frame(bio_01 = stats::runif(200, rng[1, 1], rng[2, 1]),
+                    bio_12 = stats::runif(200, rng[1, 2], rng[2, 2]),
+                    trian_test = rep(c("Train", "Test"), c(150, 50)))
+  sp_bg <- list(temporal_df = tdf, layers_ext = ".tif$",
+                env_bg = as.data.frame(v[ok_rows, ]))
+  class(sp_bg) <- "sp.temporal.bg"
+  utils::capture.output(
+    sel <- tenm::tenm_selection(sp_bg, omr_criteria = 0.2,
+                                ellipsoid_level = 0.975,
+                                vars2fit = c("bio_01", "bio_12"),
+                                nvars_to_fit = 2, mve = TRUE, proc = FALSE,
+                                parallel = FALSE))
+  passed <- sel$mods_table$fitted_vars[sel$mods_table$om_rate_train <= 0.2 &
+                                         sel$mods_table$om_rate_test <= 0.2]
+  testthat::expect_setequal(names(sel$ellipsoids), passed)
+  testthat::expect_null(attr(sel$mods_table, "ellipsoids"))
+  e <- sel$ellipsoids[["bio_01,bio_12"]]
+  testthat::expect_named(e, c("centroid", "covariance"))
+  # The stored ellipsoid is the evaluated one: it reproduces the omission rates
+  row <- sel$mods_table[sel$mods_table$fitted_vars == "bio_01,bio_12", ]
+  tr <- tdf[tdf$trian_test == "Train", c("bio_01", "bio_12")]
+  ine <- tenm::inEllipsoid(e$centroid, e$covariance, tr, level = 0.975)
+  testthat::expect_equal(mean(ine$in_Ellipsoid == 0), row$om_rate_train)
+  # predict() projects it without refitting, so repeated calls are identical
+  set.seed(1)
+  utils::capture.output(p1 <- predict(sel, layers = lyr), type = "message")
+  set.seed(2)
+  utils::capture.output(p2 <- predict(sel, layers = lyr), type = "message")
+  testthat::expect_identical(terra::values(p1), terra::values(p2))
+  ref <- rep(NA_real_, nrow(v))
+  ref[ok_rows] <- exp(-0.5 * stats::mahalanobis(v[ok_rows, ], e$centroid,
+                                                e$covariance))
+  testthat::expect_equal(terra::values(p1)[, 1], ref)
+  # Variables given in another order use the same stored ellipsoid
+  utils::capture.output(p3 <- predict(sel, model_variables = c("bio_12", "bio_01"),
+                                      layers = lyr[[c("bio_12", "bio_01")]]),
+                        type = "message")
+  testthat::expect_equal(terra::values(p3)[, 1], ref)
+  # Objects saved before this change still work by refitting
+  old <- sel
+  old$ellipsoids <- NULL
+  utils::capture.output(p4 <- predict(old, layers = lyr), type = "message")
+  testthat::expect_s4_class(p4, "SpatRaster")
+})
+
+testthat::test_that("#23: dates are floored to the layer unit and matched exactly (on_unmatched)", {
+  lyr <- make_year_layers(c("1939", "1941", "2016"))
+  occ <- data.frame(lon = 5.5, lat = 5.5,
+                    date = c("1939-05-01", "1940-11-20", "1941-03-01", "1941-09-01",
+                             "1890-01-01", "2016-06-30"))
+  testthat::expect_message(
+    st <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y", lyr$root),
+    "2 of 6 record\\(s\\) have no layer folder for their year: 1890 \\(1\\), 1940 \\(1\\)")
+  df <- st$temporal_df
+  testthat::expect_equal(df$date, occ$date[c(1, 3, 4, 6)])
+  testthat::expect_equal(format(df$layer_dates, "%Y"), c("1939", "1941", "1941", "2016"))
+  testthat::expect_named(df, c("lon", "lat", "date", "layer_dates", "layers_path"))
+  # "nearest" keeps the old matching and reports the moves
+  testthat::expect_message(
+    suppressWarnings(st_n <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y",
+                                                    lyr$root, on_unmatched = "nearest")),
+    "1890 -> 1939 \\(1\\), 1940 -> 1941 \\(1\\)")
+  testthat::expect_equal(nrow(st_n$temporal_df), 6)
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y", lyr$root,
+                           on_unmatched = "error"), "no layer folder for their year")
+  testthat::expect_error(
+    suppressMessages(tenm::sp_temporal_data(occ[5, ], "lon", "lat", "date", "ymd", "y",
+                                            lyr$root)), "No record is left")
+  # clean_dup_by_date() only compares records of the same layer date
+  cl <- tenm::clean_dup_by_date(st, by_mask = TRUE, raster_mask = lyr$template[[1]],
+                                threshold = 1, n_ngbs = 0)
+  testthat::expect_equal(sort(format(cl$temporal_df$layer_dates, "%Y")),
+                         c("1939", "1941", "2016"))
+  testthat::expect_equal(format(as.Date(cl$temporal_df$date), "%Y"),
+                         format(cl$temporal_df$layer_dates, "%Y"))
+  # Month folders: a ymd date is floored to its month
+  lyr_m <- make_year_layers(c("2000-01", "2000-02"))
+  occ_m <- data.frame(lon = 5.5, lat = 5.5, date = c("2000-01-31", "2000-02-15", "2000-03-01"))
+  testthat::expect_message(
+    st_m <- tenm::sp_temporal_data(occ_m, "lon", "lat", "date", "ymd", "ym", lyr_m$root),
+    "1 of 3 record\\(s\\) have no layer folder for their month: 2000-03 \\(1\\)")
+  testthat::expect_equal(format(st_m$temporal_df$layer_dates, "%Y-%m"), c("2000-01", "2000-02"))
+})
+
+testthat::test_that("#25: sp_temporal_data() stops when a folder's grid differs", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  r <- terra::rast(nrows = 60, ncols = 60, xmin = 0, xmax = 30, ymin = 0, ymax = 30,
+                   crs = "EPSG:4326", vals = 1)
+  names(r) <- "bio_12"
+  terra::writeRaster(r, file.path(lyr$root, "2001", "bio_12.tif"), overwrite = TRUE)
+  occ <- data.frame(lon = c(2.5, 5.5), lat = c(2.5, 5.5), year = c(2000, 2001))
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    "must share the extent, resolution and CRS.*2001/bio_12.tif")
+  # Same grid: no error
+  lyr2 <- make_year_layers(c("2000", "2001"))
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr2$root))
+})
+
+testthat::test_that("#36: parallel ellipsoid_selection() restores the caller's options", {
+  set.seed(36)
+  vars <- paste0("v", 1:15)
+  mk <- function(n) as.data.frame(stats::setNames(lapply(vars, function(v) stats::rnorm(n)), vars))
+  withr_opts <- options(future.rng.onMisuse = "warning", future.globals.maxSize = 123456789)
+  on.exit(options(withr_opts), add = TRUE)
+  future::plan("sequential")
+  utils::capture.output(
+    sel <- tenm::ellipsoid_selection(mk(40), mk(15), env_vars = vars, nvarstest = 2,
+                                     level = 0.95, mve = FALSE, env_bg = mk(300),
+                                     omr_criteria = 0.1, parallel = TRUE, ncores = 2,
+                                     proc = FALSE))
+  testthat::expect_equal(nrow(sel), 105)
+  testthat::expect_equal(getOption("future.rng.onMisuse"), "warning")
+  testthat::expect_equal(getOption("future.globals.maxSize"), 123456789)
+  testthat::expect_s3_class(future::plan(), "sequential")
+})
+
+testthat::test_that("#53: plots use deterministic viridis defaults and accept col", {
+  old <- options(rgl.useNULL = TRUE)
+  on.exit(options(old), add = TRUE)
+  set.seed(53)
+  x <- stats::rnorm(60)
+  y <- stats::rnorm(60)
+  f <- tempfile(fileext = ".pdf")
+  grDevices::pdf(f)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  set.seed(1)
+  s0 <- .Random.seed
+  tenm::plot_ellipsoid(x, y, mve = FALSE)
+  testthat::expect_identical(.Random.seed, s0)
+  mk_layer <- function() terra::rast(nrows = 10, ncols = 10, vals = stats::runif(100, 1, 3))
+  r3 <- c(mk_layer(), mk_layer(), mk_layer())
+  names(r3) <- c("a", "b", "c")
+  cen <- c(a = 2, b = 2, c = 2)
+  cv <- diag(0.2, 3)
+  dimnames(cv) <- list(names(cen), names(cen))
+  set.seed(1)
+  s0 <- .Random.seed
+  testthat::expect_s4_class(
+    tenm::ellipsoid_projection(r3, cen, cv, plot = TRUE, size = 2,
+                               col = grDevices::grey.colors(5)), "SpatRaster")
+  testthat::expect_identical(.Random.seed, s0)
+  cols <- tenm:::col_scale(c(0, 0.5, 1), grDevices::hcl.colors(3, "viridis"))
+  testthat::expect_equal(cols, grDevices::hcl.colors(3, "viridis"))
+})
+
+testthat::test_that("#28: columns are selected by name; env_data excludes trian_test", {
+  future::plan("sequential")
+  lyr <- make_year_layers(c("2000-01", "2000-02"))
+  set.seed(28)
+  occ <- data.frame(lon = stats::runif(10, 1, 29), lat = stats::runif(10, 1, 29),
+                    date = rep(c("2000-01", "2000-02"), each = 5))
+  st <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ym", "ym", lyr$root)
+  tdf <- st$temporal_df
+  st$temporal_df <- data.frame(tdf[, c("date", "lon", "lat", "layer_dates", "layers_path")],
+                               source = "survey")
+  ex <- suppressMessages(tenm::ex_by_date(st, train_prop = 0.7))
+  testthat::expect_named(ex$env_data, c("bio_01", "bio_12"))
+  testthat::expect_equal(ex$env_vars, c("bio_01", "bio_12"))
+  testthat::expect_true("trian_test" %in% names(ex$temporal_df))
+  swd <- tenm::tdf2swd(ex, sp_name = "sp")
+  testthat::expect_named(swd, c("sp_name", "lon", "lat", "date", "bio_01", "bio_12"))
+  # bio_01 = folder index * 10000 + cell (see make_year_layers())
+  cell <- terra::cellFromXY(lyr$template, as.matrix(swd[, c("lon", "lat")]))
+  idx <- match(basename(ex$temporal_df$layers_path), c("2000-01", "2000-02"))
+  testthat::expect_equal(swd$bio_01, idx * 10000 + cell)
+  bg <- suppressMessages(tenm::bg_by_date(ex, buffer_ngbs = 2, n_bg = 20))
+  bg_swd <- tenm::tdf2swd(bg)
+  testthat::expect_named(bg_swd, c("sp_name", "lon", "lat", "year", "bio_01", "bio_12"))
+  testthat::expect_true(all(bg_swd$year == 2000))
+  # Objects without env_vars (created before it was stored) still work
+  ex_old <- ex
+  ex_old$env_vars <- NULL
+  testthat::expect_named(tenm::tdf2swd(ex_old), names(swd))
+})
+
+testthat::test_that("#38: 3-D plots give a clear error when rgl is not available", {
+  testthat::local_mocked_bindings(rgl_available = function() FALSE, .package = "tenm")
+  set.seed(38)
+  x <- stats::rnorm(40)
+  y <- stats::rnorm(40)
+  z <- stats::rnorm(40)
+  f <- tempfile(fileext = ".pdf")
+  grDevices::pdf(f)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  testthat::expect_no_error(tenm::plot_ellipsoid(x, y, mve = FALSE))
+  testthat::expect_error(tenm::plot_ellipsoid(x, y, z, mve = FALSE),
+                         "needs the 'rgl' package.*install.packages")
+  r3 <- terra::rast(nrows = 5, ncols = 5, nlyrs = 3, vals = stats::runif(75))
+  names(r3) <- c("a", "b", "c")
+  cen <- c(a = 0.5, b = 0.5, c = 0.5)
+  cv <- diag(0.1, 3)
+  dimnames(cv) <- list(names(cen), names(cen))
+  testthat::expect_error(tenm::ellipsoid_projection(r3, cen, cv, plot = TRUE, size = 2),
+                         "needs the 'rgl' package")
+  testthat::expect_s4_class(tenm::ellipsoid_projection(r3, cen, cv, plot = FALSE),
+                            "SpatRaster")
+  testthat::expect_false(grepl("rgl", utils::packageDescription("tenm")$Imports))
 })

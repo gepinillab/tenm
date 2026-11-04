@@ -15,7 +15,7 @@ For example, a train_prop of 0.7 means 70\% of the data will be used for
 training and 30\% for testing.}
 }
 \value{
-An object of class sp.temporal.env that consists in a list of five
+An object of class sp.temporal.env that consists in a list of six
 elements:
 \enumerate{
 \item "temporal_df": a temporal data.frame (temporal_df) with the following
@@ -24,7 +24,10 @@ cell_ids_year, and environmental data.
 \item "sp_date_var": Name of date variable.
 \item "lon_lat_vars": Names of the longitude and latitude variables.
 \item "layers_ext": Environmental layers extension.
-\item "env_data": Environmental data of occurrences.
+\item "env_data": Environmental data of occurrences: one column per
+environmental variable (the \code{trian_test} label is in
+"temporal_df", not here).
+\item "env_vars": Names of the environmental variables.
 }
 }
 \description{

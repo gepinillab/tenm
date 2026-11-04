@@ -1,10 +1,13 @@
 # Issue #25: No validation of CRS, extent, resolution or layer completeness
 # across years.
-# Grids that differ across years are already rejected by ex_by_date() (#7,
-# see issue-07.R). This script checks the other cases with synthetic layers:
+# Decision: occurrences must already be in the layers' CRS (no occ_crs) and
+# the clean_dup() threshold stays in layer units; both are documented. This
+# script checks the layer-consistency validation with synthetic layers:
 #   (a) one year folder lacks a variable;
 #   (b) the layers have no CRS (a 0-1000 extent, so terra does not assume lon/lat);
-#   (c) projected layers (EPSG:3857) with lon/lat occurrences.
+#   (c) projected layers (EPSG:3857) with lon/lat occurrences;
+#   (d) one year folder with a different resolution: sp_temporal_data() itself
+#       stops (before, only ex_by_date() rejected it, see issue-07.R).
 # Run with: Rscript dev/issue-checks/issue-25.R
 cat("Issue #25: No validation of CRS, extent, resolution or layer completeness across years\n")
 suppressPackageStartupMessages(library(tenm))
@@ -63,14 +66,29 @@ a <- run(make_layers("issue25_missing", "EPSG:4326", 0, 10, drop_in = "2001"))
 b <- run(make_layers("issue25_nocrs", "", 0, 1000))
 c3857 <- run(make_layers("issue25_projected", "EPSG:3857", 1e6, 2e6))
 
+root_d <- make_layers("issue25_grid", "EPSG:4326", 0, 10)
+r_d <- terra::rast(nrows = 20, ncols = 20, xmin = 0, xmax = 10, ymin = 0, ymax = 10,
+                   crs = "EPSG:4326", vals = 1:400)
+for (v in c("bio_01", "bio_12")) {
+  names(r_d) <- v
+  terra::writeRaster(r_d, file.path(root_d, "2001", paste0(v, ".tif")), overwrite = TRUE)
+}
+d_err <- tryCatch({
+  suppressWarnings(suppressMessages(sp_temporal_data(occ, "lon", "lat", "year", "y", "y", root_d)))
+  NULL
+}, error = function(e) conditionMessage(e))
+ok_d <- !is.null(d_err) && grepl("resolution", d_err) && grepl("2001", d_err)
 ok_a <- !is.null(a$err) && grepl("bio_12", a$err) && grepl("2001", a$err)
 ok_b <- grepl("no CRS", b$w)
 ok_c <- grepl("outside", c3857$w) && grepl("CRS", c3857$w)
 
 cat("EXPECTED: (a) an error naming folder 2001 and the missing layer bio_12;",
     "(b) a warning that the layers have no CRS;",
-    "(c) a warning that the occurrences fall outside the layers, suggesting a CRS check\n")
+    "(c) a warning that the occurrences fall outside the layers, suggesting a CRS check;",
+    "(d) sp_temporal_data() stops on a folder whose grid differs, naming the 2001 layers\n")
 cat("GOT:      (a)", describe(a), "\n")
 cat("          (b)", describe(b), "\n")
 cat("          (c)", describe(c3857), "\n")
-cat("RESULT:", if (ok_a && ok_b && ok_c) "PASS" else "FAIL", "\n")
+cat("          (d)", if (is.null(d_err)) "sp_temporal_data() gave no error" else
+  paste("error:", gsub("\n", " ", d_err)), "\n")
+cat("RESULT:", if (ok_a && ok_b && ok_c && ok_d) "PASS" else "FAIL", "\n")
