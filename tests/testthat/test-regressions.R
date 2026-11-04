@@ -537,7 +537,8 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
   occ <- data.frame(lon = 5.5, lat = 5.5, year = c(1945, 1939, 1890, 2050, 2016, NA))
   msgs <- character()
   st <- withCallingHandlers(
-    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root,
+                           on_unmatched = "nearest"),
     message = function(m) {
       msgs <<- c(msgs, conditionMessage(m))
       invokeRestart("muffleMessage")
@@ -557,7 +558,7 @@ testthat::test_that("#23: sp_temporal_data() reports non-exact date matches and 
   occ_d <- data.frame(lon = 5.5, lat = 5.5, date = c("2016-11-30", "2017-02-01"))
   testthat::expect_warning(
     suppressMessages(tenm::sp_temporal_data(occ_d, "lon", "lat", "date", "ymd", "y",
-                                            lyr$root)),
+                                            lyr$root, on_unmatched = "nearest")),
     "^1 record\\(s\\) are outside the range of layer dates \\(1939-01-01 to 2016-12-31\\)")
   testthat::expect_error(
     suppressWarnings(tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "dmy",
@@ -735,4 +736,44 @@ testthat::test_that("#24: tenm_selection() stores the evaluated ellipsoids and p
   old$ellipsoids <- NULL
   utils::capture.output(p4 <- predict(old, layers = lyr), type = "message")
   testthat::expect_s4_class(p4, "SpatRaster")
+})
+
+testthat::test_that("#23: dates are floored to the layer unit and matched exactly (on_unmatched)", {
+  lyr <- make_year_layers(c("1939", "1941", "2016"))
+  occ <- data.frame(lon = 5.5, lat = 5.5,
+                    date = c("1939-05-01", "1940-11-20", "1941-03-01", "1941-09-01",
+                             "1890-01-01", "2016-06-30"))
+  testthat::expect_message(
+    st <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y", lyr$root),
+    "2 of 6 record\\(s\\) have no layer folder for their year: 1890 \\(1\\), 1940 \\(1\\)")
+  df <- st$temporal_df
+  testthat::expect_equal(df$date, occ$date[c(1, 3, 4, 6)])
+  testthat::expect_equal(format(df$layer_dates, "%Y"), c("1939", "1941", "1941", "2016"))
+  testthat::expect_named(df, c("lon", "lat", "date", "layer_dates", "layers_path"))
+  # "nearest" keeps the old matching and reports the moves
+  testthat::expect_message(
+    suppressWarnings(st_n <- tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y",
+                                                    lyr$root, on_unmatched = "nearest")),
+    "1890 -> 1939 \\(1\\), 1940 -> 1941 \\(1\\)")
+  testthat::expect_equal(nrow(st_n$temporal_df), 6)
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "date", "ymd", "y", lyr$root,
+                           on_unmatched = "error"), "no layer folder for their year")
+  testthat::expect_error(
+    suppressMessages(tenm::sp_temporal_data(occ[5, ], "lon", "lat", "date", "ymd", "y",
+                                            lyr$root)), "No record is left")
+  # clean_dup_by_date() only compares records of the same layer date
+  cl <- tenm::clean_dup_by_date(st, by_mask = TRUE, raster_mask = lyr$template[[1]],
+                                threshold = 1, n_ngbs = 0)
+  testthat::expect_equal(sort(format(cl$temporal_df$layer_dates, "%Y")),
+                         c("1939", "1941", "2016"))
+  testthat::expect_equal(format(as.Date(cl$temporal_df$date), "%Y"),
+                         format(cl$temporal_df$layer_dates, "%Y"))
+  # Month folders: a ymd date is floored to its month
+  lyr_m <- make_year_layers(c("2000-01", "2000-02"))
+  occ_m <- data.frame(lon = 5.5, lat = 5.5, date = c("2000-01-31", "2000-02-15", "2000-03-01"))
+  testthat::expect_message(
+    st_m <- tenm::sp_temporal_data(occ_m, "lon", "lat", "date", "ymd", "ym", lyr_m$root),
+    "1 of 3 record\\(s\\) have no layer folder for their month: 2000-03 \\(1\\)")
+  testthat::expect_equal(format(st_m$temporal_df$layer_dates, "%Y-%m"), c("2000-01", "2000-02"))
 })
