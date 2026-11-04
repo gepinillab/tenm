@@ -16,6 +16,7 @@ conditions}
   mve = TRUE,
   level = 0.975,
   output = "suitability",
+  size = 2,
   ...
 )
 }
@@ -40,6 +41,9 @@ if mve is \code{TRUE}.}
 
 \item{output}{Character indicating if the model outputs "suitability" values
 or "mahalanobis" distances.}
+
+\item{size}{Point size used in the niche plot passed to
+\code{\link[tenm]{ellipsoid_projection}}. Defaults to 2.}
 
 \item{...}{Additional parameters passed to
 \code{\link[tenm]{ellipsoid_projection}}.}
