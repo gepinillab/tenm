@@ -175,7 +175,10 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
   cat("-------------------------------------------------------------------\n")
 
   if(nmodels >100 && parallel){
-    options(future.rng.onMisuse="ignore")
+    # Restore the caller's options on exit
+    old_opts <- options(future.rng.onMisuse = "ignore",
+                        future.globals.maxSize = 8500*1024^2)
+    on.exit(options(old_opts), add = TRUE)
     max_var <- max(nvarstest)
     cvars <- lapply(nvarstest, function(x) {
 
@@ -220,7 +223,6 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
     #                     packages = c("tenm"))
     oplan <- plan(tweak(multisession, workers = n_cores))
     #plan(multisession,workers=n_cores)
-    options(future.globals.maxSize= 8500*1024^2)
     model_select <- new.env()
     # A local copy, so that it is exported to the parallel workers
     get_ells <- ellipsoids_of

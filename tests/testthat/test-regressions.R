@@ -793,3 +793,21 @@ testthat::test_that("#25: sp_temporal_data() stops when a folder's grid differs"
   testthat::expect_silent(
     tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr2$root))
 })
+
+testthat::test_that("#36: parallel ellipsoid_selection() restores the caller's options", {
+  set.seed(36)
+  vars <- paste0("v", 1:15)
+  mk <- function(n) as.data.frame(stats::setNames(lapply(vars, function(v) stats::rnorm(n)), vars))
+  withr_opts <- options(future.rng.onMisuse = "warning", future.globals.maxSize = 123456789)
+  on.exit(options(withr_opts), add = TRUE)
+  future::plan("sequential")
+  utils::capture.output(
+    sel <- tenm::ellipsoid_selection(mk(40), mk(15), env_vars = vars, nvarstest = 2,
+                                     level = 0.95, mve = FALSE, env_bg = mk(300),
+                                     omr_criteria = 0.1, parallel = TRUE, ncores = 2,
+                                     proc = FALSE))
+  testthat::expect_equal(nrow(sel), 105)
+  testthat::expect_equal(getOption("future.rng.onMisuse"), "warning")
+  testthat::expect_equal(getOption("future.globals.maxSize"), 123456789)
+  testthat::expect_s3_class(future::plan(), "sequential")
+})
