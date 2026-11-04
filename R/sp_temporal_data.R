@@ -14,8 +14,10 @@
 #'     (e.g., ".tif").
 #' @param occs A data.frame (or tibble) with information about occurrence records of the
 #' species being modeled.
-#' @param longitude Name of the variable in 'occs' containing longitude data.
-#' @param latitude Name of the variable in 'occs' containing latitude data.
+#' @param longitude Name of the variable in 'occs' containing longitude data
+#' (the x coordinate, in the CRS of the layers; see Details).
+#' @param latitude Name of the variable in 'occs' containing latitude data
+#' (the y coordinate, in the CRS of the layers; see Details).
 #' @param sp_date_var Name of the date variable.
 #' @param occ_date_format Format of dates in occurrence records.
 #' Options: "y", "ym", "ymd", "mdy", "my", "myd", "dmy".
@@ -54,10 +56,14 @@
 #'  from different dates (unless \code{on_unmatched = "nearest"} moved them to
 #'  the same folder).
 #'
-#'  The date folders used must all contain the same layer files. A warning is
-#'  given when the layers have no CRS, or when records fall outside the extent
-#'  of the layers (usually because the coordinates and the layers use
-#'  different CRSs; occurrence coordinates are not reprojected).
+#'  Occurrence coordinates must be in the coordinate reference system (CRS)
+#'  of the layers; they are never reprojected. For lon/lat layers (e.g.
+#'  EPSG:4326) give longitude and latitude in decimal degrees; for projected
+#'  layers, give x and y in the layers' units. The date folders used must all
+#'  contain the same layer files, with the same extent, resolution and CRS;
+#'  otherwise \code{sp_temporal_data()} stops. A warning is given when the
+#'  layers have no CRS, or when records fall outside the extent of the layers
+#'  (usually because the coordinates are not in the layers' CRS).
 #'
 #' @examples
 #' library(tenm)

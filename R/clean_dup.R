@@ -2,16 +2,22 @@
 #' @description
 #' Cleans up duplicated or redundant occurrence records that present overlapping
 #' longitude and latitude coordinates. Thinning can be performed using either a
-#' geographical distance threshold or a pixel neighborhood approach.
+#' distance threshold (in coordinate units) or a pixel neighborhood approach.
 #' @param data A data.frame with longitude and latitude of occurrence records.
 #' @param longitude A character vector indicating the column name of the
 #' "longitude" variable.
 #' @param latitude A character vector indicating the column name of the
 #' "latitude" variable.
 #' @param threshold A numeric value representing the distance threshold between
-#' coordinates to be considered duplicates. Units depend on whether
-#' `by_mask` is \code{T} or \code{F}. If \code{T}, the user needs to specify the number
-#' of pixels that define the neighborhood of duplicates (see n_ngbs parameter).
+#' coordinates to be considered duplicates, in the units of the coordinates,
+#' which are the units of the layers' CRS (decimal degrees for lon/lat layers,
+#' usually metres for projected layers). It is not converted to metres: for
+#' lon/lat data, a threshold in degrees covers a shorter east-west distance at
+#' higher latitudes. A common choice is the layer resolution, e.g.
+#' \code{terra::res(raster_mask)[1]}. Used only when `by_mask` is
+#' \code{FALSE}; with \code{by_mask = TRUE} the neighbourhood is set in
+#' pixels by `n_ngbs`. Coordinates must be in the CRS of `raster_mask` (or of
+#' the environmental layers); they are not reprojected.
 #' @param by_mask Logical. If \code{T}, the thinning process will use a raster layer
 #' as a mask for defining distance in pixel units.
 #' @param raster_mask An object of class SpatRaster that serves as a reference
@@ -30,7 +36,8 @@
 #' This function cleans up duplicated occurrences based on the specified
 #' distance threshold. If `by_mask` is \code{T}, the distance is interpreted as
 #' pixel distance using the provided raster_mask; otherwise, it is interpreted
-#' as geographic distance. With `by_mask = TRUE`, records outside the extent
+#' as a planar distance in coordinate units (degrees for lon/lat data). With
+#' `by_mask = TRUE`, records outside the extent
 #' of `raster_mask` are removed with a warning. Records with a missing
 #' longitude or latitude are removed with a message.
 #'

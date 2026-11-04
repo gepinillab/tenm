@@ -182,8 +182,8 @@ testthat::test_that("#7: ex_by_date() rejects layers that do not share one grid"
   }
   # 1940 layers cropped by 3 columns: same CRS and resolution, other extent
   cropped <- make_year_layers(c("1939", "1940"), crop_folder = "1940")
-  testthat::expect_error(tenm::ex_by_date(make_st(cropped), train_prop = 0.7),
-                         "same extent, resolution and CRS")
+  # Since #25, sp_temporal_data() rejects it before ex_by_date()
+  testthat::expect_error(make_st(cropped), "share the extent, resolution and CRS")
   # Matching grids still work
   same <- make_year_layers(c("1939", "1940"))
   testthat::expect_s3_class(tenm::ex_by_date(make_st(same), train_prop = 0.7),
@@ -776,4 +776,20 @@ testthat::test_that("#23: dates are floored to the layer unit and matched exactl
     st_m <- tenm::sp_temporal_data(occ_m, "lon", "lat", "date", "ymd", "ym", lyr_m$root),
     "1 of 3 record\\(s\\) have no layer folder for their month: 2000-03 \\(1\\)")
   testthat::expect_equal(format(st_m$temporal_df$layer_dates, "%Y-%m"), c("2000-01", "2000-02"))
+})
+
+testthat::test_that("#25: sp_temporal_data() stops when a folder's grid differs", {
+  lyr <- make_year_layers(c("2000", "2001"))
+  r <- terra::rast(nrows = 60, ncols = 60, xmin = 0, xmax = 30, ymin = 0, ymax = 30,
+                   crs = "EPSG:4326", vals = 1)
+  names(r) <- "bio_12"
+  terra::writeRaster(r, file.path(lyr$root, "2001", "bio_12.tif"), overwrite = TRUE)
+  occ <- data.frame(lon = c(2.5, 5.5), lat = c(2.5, 5.5), year = c(2000, 2001))
+  testthat::expect_error(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr$root),
+    "must share the extent, resolution and CRS.*2001/bio_12.tif")
+  # Same grid: no error
+  lyr2 <- make_year_layers(c("2000", "2001"))
+  testthat::expect_silent(
+    tenm::sp_temporal_data(occ, "lon", "lat", "year", "y", "y", lyr2$root))
 })

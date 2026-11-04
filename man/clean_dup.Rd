@@ -26,9 +26,15 @@ clean_dup(
 "latitude" variable.}
 
 \item{threshold}{A numeric value representing the distance threshold between
-coordinates to be considered duplicates. Units depend on whether
-\code{by_mask} is \code{T} or \code{F}. If \code{T}, the user needs to specify the number
-of pixels that define the neighborhood of duplicates (see n_ngbs parameter).}
+coordinates to be considered duplicates, in the units of the coordinates,
+which are the units of the layers' CRS (decimal degrees for lon/lat layers,
+usually metres for projected layers). It is not converted to metres: for
+lon/lat data, a threshold in degrees covers a shorter east-west distance at
+higher latitudes. A common choice is the layer resolution, e.g.
+\code{terra::res(raster_mask)[1]}. Used only when \code{by_mask} is
+\code{FALSE}; with \code{by_mask = TRUE} the neighbourhood is set in
+pixels by \code{n_ngbs}. Coordinates must be in the CRS of \code{raster_mask} (or of
+the environmental layers); they are not reprojected.}
 
 \item{by_mask}{Logical. If \code{T}, the thinning process will use a raster layer
 as a mask for defining distance in pixel units.}
@@ -56,13 +62,14 @@ duplicates based on the specified criteria.
 \description{
 Cleans up duplicated or redundant occurrence records that present overlapping
 longitude and latitude coordinates. Thinning can be performed using either a
-geographical distance threshold or a pixel neighborhood approach.
+distance threshold (in coordinate units) or a pixel neighborhood approach.
 }
 \details{
 This function cleans up duplicated occurrences based on the specified
 distance threshold. If \code{by_mask} is \code{T}, the distance is interpreted as
 pixel distance using the provided raster_mask; otherwise, it is interpreted
-as geographic distance. With \code{by_mask = TRUE}, records outside the extent
+as a planar distance in coordinate units (degrees for lon/lat data). With
+\code{by_mask = TRUE}, records outside the extent
 of \code{raster_mask} are removed with a warning. Records with a missing
 longitude or latitude are removed with a message.
 
