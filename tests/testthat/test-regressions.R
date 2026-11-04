@@ -870,3 +870,27 @@ testthat::test_that("#28: columns are selected by name; env_data excludes trian_
   ex_old$env_vars <- NULL
   testthat::expect_named(tenm::tdf2swd(ex_old), names(swd))
 })
+
+testthat::test_that("#38: 3-D plots give a clear error when rgl is not available", {
+  testthat::local_mocked_bindings(rgl_available = function() FALSE, .package = "tenm")
+  set.seed(38)
+  x <- stats::rnorm(40)
+  y <- stats::rnorm(40)
+  z <- stats::rnorm(40)
+  f <- tempfile(fileext = ".pdf")
+  grDevices::pdf(f)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  testthat::expect_no_error(tenm::plot_ellipsoid(x, y, mve = FALSE))
+  testthat::expect_error(tenm::plot_ellipsoid(x, y, z, mve = FALSE),
+                         "needs the 'rgl' package.*install.packages")
+  r3 <- terra::rast(nrows = 5, ncols = 5, nlyrs = 3, vals = stats::runif(75))
+  names(r3) <- c("a", "b", "c")
+  cen <- c(a = 0.5, b = 0.5, c = 0.5)
+  cv <- diag(0.1, 3)
+  dimnames(cv) <- list(names(cen), names(cen))
+  testthat::expect_error(tenm::ellipsoid_projection(r3, cen, cv, plot = TRUE, size = 2),
+                         "needs the 'rgl' package")
+  testthat::expect_s4_class(tenm::ellipsoid_projection(r3, cen, cv, plot = FALSE),
+                            "SpatRaster")
+  testthat::expect_false(grepl("rgl", utils::packageDescription("tenm")$Imports))
+})

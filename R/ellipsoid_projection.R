@@ -14,6 +14,7 @@
 #' @param output The output distance: two possible values "suitability" or
 #' "mahalanobis". By default the function uses "suitability".
 #' @param plot Logical If \code{TRUE} a plot of the niche will be shown.
+#' With three variables the plot needs the suggested package \pkg{rgl}.
 #' @param size The size of the points of the niche plot.
 #' @param xlab1 For x label for 2-dimensional histogram
 #' @param ylab1 For y label for 2-dimensional histogram
@@ -184,6 +185,7 @@ ellipsoid_projection <- function(envlayers,centroid,covar,level=0.95,
   }
 
   if(dim(env_vars)[2]==3 && plot==TRUE){
+    check_rgl("ellipsoid_projection(plot = TRUE) with three variables")
 
     data1 <- env_vars
     dfd <- dim(data1)[1] - 1

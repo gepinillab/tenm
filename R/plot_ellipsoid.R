@@ -117,6 +117,7 @@ plot_ellipsoid <- function(x,y,z=NULL,xlab="x",ylab="y",zlab="x",mve=TRUE,
     }
   }
   if(ndim ==3){
+    check_rgl("plot_ellipsoid() with three variables")
 
     rgl::plot3d(x,y,z=z,xlab=xlab,ylab=ylab,zlab=zlab,type="n",add=add,...)
     ellips_E <- rgl::ellipse3d(sigma, centre = centroid,
@@ -154,3 +155,12 @@ plot_ellipsoid <- function(x,y,z=NULL,xlab="x",ylab="y",zlab="x",mve=TRUE,
   }
 
 }
+
+# Stop with a clear message when the suggested package rgl is not available
+check_rgl <- function(what){
+  if(!rgl_available())
+    stop(what, " needs the 'rgl' package for 3-D plots. Install it with ",
+         "install.packages(\"rgl\").", call. = FALSE)
+  invisible(TRUE)
+}
+rgl_available <- function() requireNamespace("rgl", quietly = TRUE)

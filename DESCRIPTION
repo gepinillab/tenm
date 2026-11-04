@@ -55,7 +55,6 @@ Imports:
     purrr,
     dplyr,
     stringr,
-    rgl (> 1.2),
     future,
     tidyr,
     furrr,
@@ -68,6 +67,7 @@ Depends:
 LazyData: true
 Suggests: 
     knitr,
+    rgl (> 1.2),
     rmarkdown,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr

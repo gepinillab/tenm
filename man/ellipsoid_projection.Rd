@@ -38,7 +38,8 @@ in which case layers are matched by position with a warning.}
 \item{output}{The output distance: two possible values "suitability" or
 "mahalanobis". By default the function uses "suitability".}
 
-\item{plot}{Logical If \code{TRUE} a plot of the niche will be shown.}
+\item{plot}{Logical If \code{TRUE} a plot of the niche will be shown.
+With three variables the plot needs the suggested package \pkg{rgl}.}
 
 \item{size}{The size of the points of the niche plot.}
 
