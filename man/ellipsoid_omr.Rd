@@ -72,7 +72,8 @@ A data.frame with the following columns:
 \item "bg_prevalence": Approximated prevalence of the model: the proportion
 of \code{env_bg} points inside the ellipsoid. It is also the null
 probability of the binomial test.
-\item "pval_bin": p-value of the binomial test.
+\item "pval_bin": p-value of the binomial test; \code{NA} if there are no
+testing records.
 \item "pval_proc": p-value of the partial ROC test.
 \item "env_bg_paucratio": Environmental partial AUC ratio value.
 \item "env_bg_auc": Environmental AUC value.

@@ -51,7 +51,8 @@
 #'   - "om_rate_test"': Omission rate of the testing data.
 #'   - "non_pred_test_ids": Row IDs of non-predicted testing data.
 #'   - "bg_prevalence": Approximated prevalence of the model (see details).
-#'   - "pval_bin": p-value of the binomial test.
+#'   - "pval_bin": p-value of the binomial test; \code{NA} if there are no
+#'     testing records.
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
@@ -96,7 +97,7 @@
 #' (\code{env_bg_auc}) are reported for each model but are not used to
 #' filter or rank models; the partial AUC ratio is only used to order the
 #' models that pass the omission filter. A model with no testing records has
-#' an \code{NA} testing omission rate, never passes, and is ranked after the
+#' an \code{NA} testing omission rate and \code{pval_bin}, never passes, and is ranked after the
 #' models with testing data. Without testing data or \code{env_bg}, models
 #' are only ordered by training omission rate and \code{omr_criteria} is not
 #' used. Model selection can be run in parallel.
@@ -242,9 +243,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
 
         results_L <- lapply(1:ncol(combs_v),function(x_comb) {
           var_comb <- stats::na.omit(combs_v[,x_comb])
-          env_data0 <- stats::na.omit(env_train[,var_comb])
-          env_test0 <- stats::na.omit(env_test[,var_comb])
-          env_bg0 <-   stats::na.omit(env_bg[,var_comb])
+          env_data0 <- stats::na.omit(env_train[,var_comb,drop = FALSE])
+          env_test0 <- stats::na.omit(env_test[,var_comb,drop = FALSE])
+          env_bg0 <-   stats::na.omit(env_bg[,var_comb,drop = FALSE])
           r1 <- tenm::ellipsoid_omr(env_data = env_data0,
                                     env_test = env_test0,
                                     env_bg = env_bg0,
@@ -286,9 +287,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
       combs_v <- cvars[[x]]
       results_L <- lapply(1:ncol(combs_v),function(x_comb) {
         var_comb <- stats::na.omit(combs_v[,x_comb])
-        env_data <- stats::na.omit(env_train[,var_comb])
-        env_test <- stats::na.omit(env_test[,var_comb])
-        env_bg <-   stats::na.omit(env_bg[,var_comb])
+        env_data <- stats::na.omit(env_train[,var_comb,drop = FALSE])
+        env_test <- stats::na.omit(env_test[,var_comb,drop = FALSE])
+        env_bg <-   stats::na.omit(env_bg[,var_comb,drop = FALSE])
         r1 <- tenm::ellipsoid_omr(env_data = env_data,
                                    env_test = env_test,
                                    env_bg = env_bg,

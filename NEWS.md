@@ -1,3 +1,19 @@
+# tenm 0.5.1.9005
+
+## Bug fixes
+
+* `ellipsoid_selection()` (and so `tenm_selection()`) no longer fails with
+  `nvarstest = 1`: the subsets of variables keep their data-frame shape
+  (#54).
+
+* A model with no test records now has `pval_bin = NA` instead of `1`, a
+  binomial test on 0 trials. It is consistent with `om_rate_test` and the
+  pROC columns, which were already `NA`. Ranking is unchanged (#56).
+
+* `predict()` has a `size` argument (default 2, as before) that it forwards to
+  `ellipsoid_projection()`, so `predict(..., size = 3)` no longer fails with
+  "matched by multiple actual arguments" (#55).
+
 # tenm 0.5.1.9004
 
 ## Breaking changes

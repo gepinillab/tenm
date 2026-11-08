@@ -41,7 +41,8 @@
 #'   - "bg_prevalence": Approximated prevalence of the model: the proportion
 #'     of \code{env_bg} points inside the ellipsoid. It is also the null
 #'     probability of the binomial test.
-#'   - "pval_bin": p-value of the binomial test.
+#'   - "pval_bin": p-value of the binomial test; \code{NA} if there are no
+#'     testing records.
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
@@ -211,10 +212,16 @@ ellipsoid_omr <- function(env_data,env_test=NULL,env_bg,cf_level,mve=TRUE,
       test_fail <-  occs_fail_test
       test_succs <- occs_succs_test
       # One-sided binomial test: P(X >= test_succs)
-      p_bin <- stats::pbinom(test_succs - 1,
-                             size=test_succs+test_fail,
-                             prob = prevBG,
-                             lower.tail = FALSE)
+      # With no test records there are no trials and no test: NA, not 1
+      n_trials <- test_succs + test_fail
+      p_bin <- if (n_trials == 0) {
+        NA_real_
+      } else {
+        stats::pbinom(test_succs - 1,
+                      size = n_trials,
+                      prob = prevBG,
+                      lower.tail = FALSE)
+      }
       d_results <-data.frame( d_results,
                               pval_bin=p_bin)
       if(proc){
