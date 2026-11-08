@@ -242,9 +242,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
 
         results_L <- lapply(1:ncol(combs_v),function(x_comb) {
           var_comb <- stats::na.omit(combs_v[,x_comb])
-          env_data0 <- stats::na.omit(env_train[,var_comb])
-          env_test0 <- stats::na.omit(env_test[,var_comb])
-          env_bg0 <-   stats::na.omit(env_bg[,var_comb])
+          env_data0 <- stats::na.omit(env_train[,var_comb,drop = FALSE])
+          env_test0 <- stats::na.omit(env_test[,var_comb,drop = FALSE])
+          env_bg0 <-   stats::na.omit(env_bg[,var_comb,drop = FALSE])
           r1 <- tenm::ellipsoid_omr(env_data = env_data0,
                                     env_test = env_test0,
                                     env_bg = env_bg0,
@@ -286,9 +286,9 @@ ellipsoid_selection <- function(env_train,env_test=NULL,env_vars,nvarstest,
       combs_v <- cvars[[x]]
       results_L <- lapply(1:ncol(combs_v),function(x_comb) {
         var_comb <- stats::na.omit(combs_v[,x_comb])
-        env_data <- stats::na.omit(env_train[,var_comb])
-        env_test <- stats::na.omit(env_test[,var_comb])
-        env_bg <-   stats::na.omit(env_bg[,var_comb])
+        env_data <- stats::na.omit(env_train[,var_comb,drop = FALSE])
+        env_test <- stats::na.omit(env_test[,var_comb,drop = FALSE])
+        env_bg <-   stats::na.omit(env_bg[,var_comb,drop = FALSE])
         r1 <- tenm::ellipsoid_omr(env_data = env_data,
                                    env_test = env_test,
                                    env_bg = env_bg,

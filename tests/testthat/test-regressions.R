@@ -894,3 +894,24 @@ testthat::test_that("#38: 3-D plots give a clear error when rgl is not available
                             "SpatRaster")
   testthat::expect_false(grepl("rgl", utils::packageDescription("tenm")$Imports))
 })
+
+testthat::test_that("#54: ellipsoid_selection() works with nvarstest = 1", {
+  set.seed(54)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 2),
+                          bio_12 = rnorm(60, 1000, 100))
+  env_test <- data.frame(bio_01 = rnorm(20, 21, 3),
+                         bio_12 = rnorm(20, 1050, 150))
+  env_bg <- data.frame(bio_01 = runif(1000, 5, 45),
+                       bio_12 = runif(1000, 200, 2500))
+  utils::capture.output(
+    sel <- tenm::ellipsoid_selection(env_train = env_train,
+                                     env_test = env_test,
+                                     env_vars = c("bio_01", "bio_12"),
+                                     nvarstest = 1, level = 0.975,
+                                     mve = FALSE, env_bg = env_bg,
+                                     omr_criteria = 0.5, parallel = FALSE,
+                                     proc = FALSE))
+  testthat::expect_equal(nrow(sel), 2)
+  testthat::expect_true(all(sel$nvars == 1))
+  testthat::expect_setequal(sel$fitted_vars, c("bio_01", "bio_12"))
+})
