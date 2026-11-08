@@ -17,6 +17,7 @@ conditions}
   level = 0.975,
   output = "suitability",
   plot = FALSE,
+  size = 2,
   ...
 )
 }
@@ -50,6 +51,9 @@ or "mahalanobis" distances.}
 \item{plot}{Logical. If \code{TRUE}, plot the niche in environmental space
 for each projection (see \code{\link[tenm]{ellipsoid_projection}}).
 Default is \code{FALSE}.}
+
+\item{size}{Point size used in the niche plot passed to
+\code{\link[tenm]{ellipsoid_projection}}. Defaults to 2.}
 
 \item{...}{Additional parameters passed to
 \code{\link[tenm]{ellipsoid_projection}}.}

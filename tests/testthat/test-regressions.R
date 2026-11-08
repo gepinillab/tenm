@@ -948,3 +948,43 @@ testthat::test_that("#56: pval_bin is NA for models with no test records", {
   testthat::expect_true(max(sel$rank_by_omr_train_test[!no_test]) <
                           min(sel$rank_by_omr_train_test[no_test]))
 })
+
+testthat::test_that("#55: predict() forwards size to ellipsoid_projection()", {
+  set.seed(55)
+  object <- structure(
+    list(temporal_df = data.frame(x = rnorm(30), y = rnorm(30),
+                                  trian_test = "Train"),
+         env_bg = data.frame(x = 0, y = 0),
+         mods_table = data.frame(fitted_vars = "x,y")),
+    class = "sp.temporal.selection")
+  layers <- terra::rast(nrows = 2, ncols = 2, nlyrs = 2,
+                        xmin = 0, xmax = 2, ymin = 0, ymax = 2)
+  names(layers) <- c("x", "y")
+  terra::values(layers) <- matrix(rnorm(8), ncol = 2)
+  layer_dir <- tempfile()
+  dir.create(layer_dir)
+  on.exit(unlink(layer_dir, recursive = TRUE), add = TRUE)
+  terra::writeRaster(layers[[1]], file.path(layer_dir, "x.tif"))
+  terra::writeRaster(layers[[2]], file.path(layer_dir, "y.tif"))
+  grDevices::png(tempfile(fileext = ".png"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  r <- suppressMessages(predict(object, layers = layers, mve = FALSE,
+                                size = 3))
+  testthat::expect_s4_class(r, "SpatRaster")
+  r_plot <- suppressMessages(predict(object, layers = layers, mve = FALSE,
+                                     plot = TRUE, size = 3))
+  testthat::expect_s4_class(r_plot, "SpatRaster")
+  r_list <- suppressMessages(predict(object, layers = list(layers),
+                                     mve = FALSE, size = 3))
+  testthat::expect_type(r_list, "list")
+  testthat::expect_s4_class(r_list[[1]][[1]], "SpatRaster")
+  r_dir <- suppressMessages(predict(object, layers_path = layer_dir,
+                                    layers_ext = "\\.tif$", mve = FALSE,
+                                    size = 3))
+  testthat::expect_s4_class(r_dir, "SpatRaster")
+  # Calls without size keep working
+  testthat::expect_s4_class(
+    suppressMessages(predict(object, layers = layers, mve = FALSE)),
+    "SpatRaster")
+})
