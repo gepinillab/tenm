@@ -915,3 +915,36 @@ testthat::test_that("#54: ellipsoid_selection() works with nvarstest = 1", {
   testthat::expect_true(all(sel$nvars == 1))
   testthat::expect_setequal(sel$fitted_vars, c("bio_01", "bio_12"))
 })
+
+testthat::test_that("#56: pval_bin is NA for models with no test records", {
+  set.seed(56)
+  env_train <- data.frame(bio_01 = rnorm(60, 20, 2),
+                          bio_12 = rnorm(60, 1000, 100),
+                          bio_30 = rnorm(60, 5, 1))
+  env_bg <- data.frame(bio_01 = runif(1000, 5, 45),
+                       bio_12 = runif(1000, 200, 2500),
+                       bio_30 = runif(1000, 0, 10))
+  env_test <- data.frame(bio_01 = rnorm(20, 21, 3),
+                         bio_12 = NA_real_,
+                         bio_30 = rnorm(20, 5, 1.5))
+  direct <- tenm::ellipsoid_omr(env_data = env_train[, "bio_12", drop = FALSE],
+                                env_test = env_test[0, "bio_12", drop = FALSE],
+                                env_bg = env_bg[, "bio_12", drop = FALSE],
+                                cf_level = 0.975, mve = FALSE, proc = FALSE)
+  testthat::expect_true(is.na(direct$pval_bin))
+  utils::capture.output(
+    sel <- tenm::ellipsoid_selection(env_train = env_train,
+                                     env_test = env_test,
+                                     env_vars = c("bio_01", "bio_12", "bio_30"),
+                                     nvarstest = 2, level = 0.975,
+                                     mve = FALSE, env_bg = env_bg,
+                                     omr_criteria = 0.5, parallel = FALSE,
+                                     proc = FALSE))
+  no_test <- grepl("bio_12", sel$fitted_vars)
+  testthat::expect_true(all(is.na(sel$om_rate_test[no_test])))
+  testthat::expect_true(all(is.na(sel$pval_bin[no_test])))
+  testthat::expect_false(anyNA(sel$pval_bin[!no_test]))
+  # Models with test records are still ranked first
+  testthat::expect_true(max(sel$rank_by_omr_train_test[!no_test]) <
+                          min(sel$rank_by_omr_train_test[no_test]))
+})

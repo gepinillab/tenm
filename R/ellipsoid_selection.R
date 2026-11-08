@@ -51,7 +51,8 @@
 #'   - "om_rate_test"': Omission rate of the testing data.
 #'   - "non_pred_test_ids": Row IDs of non-predicted testing data.
 #'   - "bg_prevalence": Approximated prevalence of the model (see details).
-#'   - "pval_bin": p-value of the binomial test.
+#'   - "pval_bin": p-value of the binomial test; \code{NA} if there are no
+#'     testing records.
 #'   - "pval_proc": p-value of the partial ROC test.
 #'   - "env_bg_paucratio": Environmental partial AUC ratio value.
 #'   - "env_bg_auc": Environmental AUC value.
@@ -96,7 +97,7 @@
 #' (\code{env_bg_auc}) are reported for each model but are not used to
 #' filter or rank models; the partial AUC ratio is only used to order the
 #' models that pass the omission filter. A model with no testing records has
-#' an \code{NA} testing omission rate, never passes, and is ranked after the
+#' an \code{NA} testing omission rate and \code{pval_bin}, never passes, and is ranked after the
 #' models with testing data. Without testing data or \code{env_bg}, models
 #' are only ordered by training omission rate and \code{omr_criteria} is not
 #' used. Model selection can be run in parallel.
